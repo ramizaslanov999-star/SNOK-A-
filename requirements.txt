@@ -1,4 +1,3 @@
 discord.py
-google-generativeai
+httpx
 python-dotenv
-flask
