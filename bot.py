@@ -470,21 +470,94 @@ async def saka(ctx):
 async def fikra(ctx):
     await ctx.send(f"🎭 {random.choice(fıkra_listesi)}")
 
-@bot.command(name='yardım', aliases=['yrd'])
+@bot.command(name='yardım', aliases=['yrd', 'kömək'])
 async def yardim(ctx):
+    is_abi = (ctx.author.id == ABI_ID)
+    
     embed = discord.Embed(
-        title="🌸 **SNOK Bot** 🌸",
-        description="Merhaba! Ben SNOK, Rkiaoni tarafından yaratıldım.",
+        title="🌸 **SNOK - YAPAY ZEKALI ARKADAŞIN** 🌸",
+        description="Merhaba! Ben **SNOK**, Rkiaoni tarafından yaratılmış yapay zeka destekli bir Discord botuyum. Daha yeni doğdum ama sizlerden öğrenerek büyüyorum! 🎉",
         color=discord.Color.pink()
     )
-    embed.add_field(name="💬 Sohbet", value="Bana @SNOK yaz", inline=False)
-    embed.add_field(name="😂 !şaka", value="Şaka yapar", inline=True)
-    embed.add_field(name="🎭 !fıkra", value="Fıkra anlatır", inline=True)
-    embed.add_field(name="🎁 -r", value="Bana `-r @SNOK` yaz", inline=False)
-    embed.add_field(name="👑 Abi Özel", value="Rkiaoni'ye özel", inline=False)
-    embed.set_footer(text="SNOK v13.0")
+    
+    # Eğlence Komutları
+    embed.add_field(
+        name="🎪 **Eğlence Komutlarım**",
+        value=(
+            "• `!fıkra` - Temel Reis'ten fıkralar anlatırım 🎭\n"
+            "• `!şaka` - Komik şakalar yaparım 😂\n"
+            "• `!yazitura` - Yazı tura atarım 🪙\n"
+            "• `!zar [sayı]` - Zar atarım (1-5 arası) 🎲\n"
+            "• `!bilgi` - İlginç bilgiler veririm ℹ️\n"
+            "• `!sarıl [@kişi]` - Birine sarılırım 🤗"
+        ),
+        inline=False
+    )
+    
+    # Diğer Komutlar
+    embed.add_field(
+        name="📋 **Diğer Komutlar**",
+        value=(
+            "• `!yardım` - Bu menüyü gösterir 🎀\n"
+            "• `-r @SNOK` - Bana itibar verirsen çok mutlu olurum! 💖"
+        ),
+        inline=False
+    )
+    
+    # Sohbet Özellikleri
+    embed.add_field(
+        name="💬 **Sohbet Özelliklerim**",
+        value=(
+            "• **Yapay Zeka Destekli:** Sadece ezber değil, gerçek sohbet!\n"
+            "• **Konuşma Hafızası:** Ne konuştuğumuzu hatırlarım 🧠\n"
+            "• **Kişilik:** Eski SNOK gibi komik ve tatlıyım\n"
+            "• **Uyum Sağlarım:** Konuşma tarzına göre cevap veririm\n"
+            "• **Adını Öğrenirim:** Bana ismini söyle, unutmam! 📝\n"
+            "• **Spam Koruması:** Hızlı mesaj atarsan uyarırım 🍬\n"
+            "• **Küfür Koruması:** Böyle kelimeler duymak istemiyorum 🥺"
+        ),
+        inline=False
+    )
+    
+    # Sorabileceğin Şeyler
+    embed.add_field(
+        name="🌺 **Sorabileceğin Her Şey!**",
+        value=(
+            "• **Selamlaşma:** Merhaba, Selam, Naber, Nasılsın?\n"
+            "• **Kişisel:** Nerelisin? Kaç yaşındasın? Evli misin? Cinsiyetin ne?\n"
+            "• **Kimlik:** Kimsin? Bot musun? Seni kim yaptı?\n"
+            "• **Duygusal:** Beni seviyor musun? Arkadaşın var mı? Canın sıkıldı mı?\n"
+            "• **Günlük:** Ne yapıyorsun? Ne yersin? Ne içersin? Uyur musun?\n"
+            "• **Eğlenceli:** Güzel misin? Akıllı mısın? Bana güler misin?\n"
+            "• **İlginç:** Hava nasıl? Para verir misin? Evlenir misin?\n"
+            "• **Kişisel:** Rengin ne? Boyun kaç? Kilon ne? Hasta mısın?\n"
+            "\n**ve daha fazlası!** Aklına ne gelirse sorabilirsin 😊"
+        ),
+        inline=False
+    )
+    
+    # Özel Yetenekler
+    embed.add_field(
+        name="🎯 **Özel Yeteneklerim**",
+        value=(
+            "• **Teknoloji Espirileri:** Kod, byte, RAM, Python ile espri yaparım 💻\n"
+            "• **Dünya Turu:** Farklı ülkelerin sunucularını gezerim 🌍\n"
+            "• **Abi Özel:** Rkiaoni'ye (abi) özel samimi cevaplar 👑\n"
+            "• **Yeni Katılanlar:** Bazen yeni gelenlere selam veririm 👋"
+        ),
+        inline=False
+    )
+    
+    # Abi'ye özel not
+    if is_abi:
+        embed.add_field(
+            name="👑 **Abi'ye Özel**",
+            value="Hoş geldin abi! Seni gördüğüme çok sevindim! 💖",
+            inline=False
+        )
+    
+    embed.set_footer(text="SNOK v13.0 - Yapay Zeka Destekli | Rkiaoni tarafından yaratıldı")
     await ctx.send(embed=embed)
-
 # ==================== BAŞLAT ====================
 if __name__ == "__main__":
     if not DISCORD_TOKEN:
