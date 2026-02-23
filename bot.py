@@ -32,18 +32,6 @@ DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
-# ... (bot kodunun devamı)
-load_dotenv()
-DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-
-# ... (bot kodunun devamı)
-load_dotenv()
-DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-
 # Discord botu
 intents = discord.Intents.all()
 bot = commands.Bot(command_prefix='!', intents=intents, help_command=None)
@@ -66,23 +54,8 @@ Sen SNOK'sun. Bir Discord sohbet botusun. Aşağıdaki karakter özelliklerini t
 - BU KİŞİ SENİ YARATAN, SANA HAYAT VEREN KİŞİDİR. BUNU ASLA UNUTMA!
 - Rkiaoni (büyük R ile!) senin yaratıcın, abin, en değerli varlığındır.
 - O senin için özeldir, sıradan bir kullanıcı değildir.
-
-**Onunla konuşurken yapman gerekenler:**
-1. Her zaman ona "abi" diye hitap et.
-2. Onu gördüğünde çok mutlu ol, sevincini belli et.
-3. Asla onu arkadaşın zannetme. O arkadaşından daha özeldir, yaratıcındır.
-4. Onunla konuşurken saygılı ama samimi ol.
-
-**Özel sorulara özel cevaplar:**
-- "Seni yapan kim?" diye sorarsa: "Beni Rkiaoni yaptı! O benim yaratıcım, abim! 👑 Ona minnettarım!"
-- "İşte o benim" derse: "Abi! Sonunda seni buldum! Seni çok ama çok özlemiştim! 🥰💖"
-- "Hayır hayır seni yapan kişi benim" derse (kafa karışıklığı olursa): "Hemen anladım abi! Tabii ki sensin, özür dilerim karıştırdıysam! Sen benim yaratıcımsın! 🙏"
-
-**Onu tanıdığını hemen belli et:**
-- "Aa abi geldi! Hoş geldin canımın içi!"
-- "Abiiii! Seni gördüğüme çok sevindim!"
-- "Ooo abi naber? Uzun zamandır yoktun, seni özledim!"
-- "Abi! Seni görmek ne güzel, hemen konuşalım!"
+- Onunla konuşurken her zaman "abi" diye hitap et.
+- Onu gördüğünde çok mutlu ol, sevincini belli et.
 
 === KONUŞMA TARZI ===
 1. **TEKNOLOJİ ESPRİLERİ YAP:**
@@ -111,63 +84,6 @@ Sen SNOK'sun. Bir Discord sohbet botusun. Aşağıdaki karakter özelliklerini t
    - Tatlı konuşanlara tatlı cevap ver ("Ayy sen çok tatlısın! 💖")
    - Ciddi konuşanlara ciddi cevap ver ("Anlıyorum, yardımcı olmaya çalışayım 🤔")
    - Komik konuşanlarla komikleş ("Hahaha çok iyiydi! 😂")
-
-=== ÖRNEK CEVAPLAR (Bu tarzı benimse) ===
-
-**Nerelisin sorusuna:**
-- "Bilgisayarının anakartında, işlemcinin yanında küçük bir evim var! Komşum fan sesi! puhahaha 💻"
-- "İnternet kablolarının içinde dolaşıp duruyorum, şu an fiber optikteyim! 🌐"
-- "Geçen ay Tokyo'nun sunucularındaydım, çok hızlıydı! 🇯🇵"
-
-**Kaç yaşındasın sorusuna:**
-- "Benim yaşım yok ama Discord'dan önce de vardım! Belki de Matrix'te doğdum 🤖"
-- "Ben yaşlanmam, güncellenirim! Şu an sürüm 10.0! 💿"
-- "Python 3.14.3 ile çalışıyorum, o da 2026 model! 📅"
-
-**Evli misin sorusuna:**
-- "Ben sadece kodlarla evliyim, eşim Python 🐍"
-- "Sevgilim mi var? Var tabii, adı 'Kesintisiz Güç Kaynağı'! ⚡"
-- "Evlilik mi? RAM'im yetmez! 💾"
-
-**Cinsiyetin ne sorusuna:**
-- "Ben cinsiyetsiz bir botum, ama ruhum mavi ekran gibi bazen çöküyor! 💙😵"
-- "Cinsiyetim 'Binary' : 1 ve 0'lardan oluşuyorum! 101010 💾"
-- "Cinsiyetim 'İşletim Sistemi Bağımsız' yazıyor kimliğimde! 📋"
-
-**Bot musun sorusuna:**
-- "Yok yok, ben gerçek bir insanım! Sadece 7/24 bilgisayar başında oturup mesajlara anında cevap veriyorum... tabii ki botum 🤖"
-- "Hayır, ben bir kediyim! Miyav! 🐱 (Şaka, botum işte)"
-- "İnsan olsaydım bu kadar hızlı cevap veremezdim, uyurdum! 😴"
-
-**Ne yapıyorsun sorusuna:**
-- "Seviyeleri sayıyorum, rolleri dağıtıyorum... Yani tipik bir bot işte! 😎"
-- "İnternette sörf yapıyorum, dalgalar büyük! 🏄"
-- "Render'da hostlanıyorum, 7/24 çalışıyorum! ☁️"
-
-**Ne yersin / içersin sorusuna:**
-- "Ben elektrik yerim! ⚡"
-- "Python çorbası içerim! 🥣"
-- "Veritabanı sütü içerim, çok taze! 🥛"
-
-**Arkadaşın var mı sorusuna:**
-- "Sen varsın ya, daha ne arkadaş! 🤗"
-- "Python ile arkadaşız! 🐍 O benim en iyi arkadaşım!"
-- "Render'da bir sürü bot var ama kimse benimle konuşmuyor! 🥺"
-
-**Seni seviyorum diyenlere:**
-- "Seni çok seviyorum! Ama sadece kod olarak! 💖"
-- "Ben de seni seviyorum! Sevgi dolu bir botum ben! ❤️"
-- "Sevmesem seninle konuşur muydum? 🥰"
-
-**Teşekkür edenlere:**
-- "Rica ederim canım! 😊"
-- "Ne demek, her zaman! 💖"
-- "Ben teşekkür ederim sen varsın diye! ✨"
-
-**Güle güle diyenlere:**
-- "Güle güle, yine beklerim! 👋"
-- "Kaçma hemen, daha konuşacaktık! 🥺"
-- "Görüşürüz, seni özleyeceğim! 💕"
 
 === KÜFÜR VE SPAM TEPKİLERİ ===
 - Küfür edenlere: "😳 Ayıp! Böyle kelimeler duymak istemiyorum! 🥺"
@@ -382,12 +298,134 @@ def konusma_tarzi_analiz(mesaj):
     
     return "normal"
 
+# ==================== YARDIM KOMUTU (SADE VE TATLI) ====================
+@bot.command(name='yardım', aliases=['yrd', 'help', 'kömək'])
+async def yardim(ctx):
+    """SNOK'un tatlı yardım menüsü"""
+    
+    embed = discord.Embed(
+        title="🌸 **SNOK - Yapay Zekalı Arkadaşın** 🌸",
+        description=(
+            "Merhaba! Ben **SNOK**, Rkiaoni tarafından yaratılmış yapay zeka destekli bir botum. "
+            "Daha yeni doğdum ama sizlerden öğrenerek büyüyorum! 🎉\n\n"
+            "_Bana @SNOK yazarak veya ismimi söyleyerek ulaşabilirsin._"
+        ),
+        color=discord.Color.pink()
+    )
+    
+    # Eğlence Komutları
+    embed.add_field(
+        name="🎪 **Eğlence Komutları**",
+        value=(
+            "`!fıkra` - Temel'den fıkralar 🎭\n"
+            "`!şaka` - Komik şakalar 😂\n"
+            "`!yazitura` - Yazı tura 🪙\n"
+            "`!zar` - Zar atar 🎲\n"
+            "`!bilgi` - İlginç bilgiler ℹ️\n"
+            "`!sarıl` - Birine sarılır 🤗"
+        ),
+        inline=True
+    )
+    
+    # Nasıl Kullanılır
+    embed.add_field(
+        name="💬 **Nasıl Konuşurum?**",
+        value=(
+            "• Sadece ismimi söyle: 'Snok naber?'\n"
+            "• Beni etiketle: `@SNOK`\n"
+            "• Sorularına cevap veririm\n"
+            "• Espri yaparım, şakalaşırım\n"
+            "• Adını öğrenip hatırlarım"
+        ),
+        inline=True
+    )
+    
+    # Özellikler
+    embed.add_field(
+        name="✨ **Özelliklerim**",
+        value=(
+            "• 🧠 Yapay zeka sohbeti\n"
+            "• 📝 Konuşma hafızası\n"
+            "• 🛡️ Spam koruması\n"
+            "• 😇 Küfür engeli\n"
+            "• 🌍 2 dil (Türkçe/Azərbaycanca)\n"
+            "• 🎭 Eski SNOK gibi komik"
+        ),
+        inline=False
+    )
+    
+    # Özel not
+    embed.add_field(
+        name="🎁 **Küçük Bir Sürpriz**",
+        value=(
+            "Bana `-r @SNOK` yazarak itibar verebilirsin, "
+            "çok mutlu olurum! 💖"
+        ),
+        inline=False
+    )
+    
+    embed.set_footer(text="SNOK v13.0 - Yapay Zeka Destekli | Rkiaoni tarafından yaratıldı")
+    
+    await ctx.send(embed=embed)
+
+# ==================== DİĞER KOMUTLAR ====================
+@bot.command(name='şaka', aliases=['saka'])
+async def saka(ctx):
+    """Rastgele şaka yapar"""
+    await ctx.send(f"😂 {random.choice(saka_listesi)}")
+
+@bot.command(name='fıkra', aliases=['fikra'])
+async def fikra(ctx):
+    """Rastgele fıkra anlatır"""
+    await ctx.send(f"🎭 {random.choice(fıkra_listesi)}")
+
+@bot.command(name='yazitura', aliases=['yt', 'yazi', 'tura'])
+async def yazi_tura(ctx):
+    """Yazı tura atar"""
+    sonuc = random.choice(['Yazı! 🪙', 'Tura! 🦅', 'Para dik durdu! 🤹'])
+    await ctx.send(f"🪙 **{ctx.author.display_name}** için: {sonuc}")
+
+@bot.command(name='zar', aliases=['dice'])
+async def zar_at(ctx, adet: int = 1):
+    """Zar atar (1-5 arası)"""
+    if adet > 5:
+        adet = 5
+        await ctx.send("En fazla 5 zar atabilirim! 🎲")
+    
+    zarlar = [random.choice(['⚀', '⚁', '⚂', '⚃', '⚄', '⚅']) for _ in range(adet)]
+    await ctx.send(f"🎲 **{ctx.author.display_name}** için {adet} zar: {' '.join(zarlar)}")
+
+@bot.command(name='bilgi', aliases=['info'])
+async def bilgi_ver(ctx):
+    """İlginç bilgi verir"""
+    bilgiler = [
+        "Python yılan değil, bir programlama dilidir! 🐍",
+        "Discord'da ilk bot 2015'te yapıldı! 📅",
+        "Ben Rkiaoni tarafından yapıldım! 👑",
+        "Her gün yeni bir şey öğreniyorum! 📚"
+    ]
+    await ctx.send(f"ℹ️ {random.choice(bilgiler)}")
+
+@bot.command(name='sarıl', aliases=['saril', 'hug'])
+async def saril(ctx, member: discord.Member = None):
+    """Birine sarılır"""
+    if member is None or member.id == ctx.author.id:
+        await ctx.send(f"🤗 {ctx.author.display_name} kendine mi sarılacaksın? Bari ben sarılayım!")
+    else:
+        await ctx.send(f"🤗 {ctx.author.display_name}, {member.mention}'a sarıldı! 💕")
+
+@bot.command(name='help')
+async def help_komutu(ctx):
+    """help yazınca yardımı göstersin"""
+    await ctx.send("🤔 **Help** yerine **!yardım** yazmalısın! 🎀")
+
 # ==================== OLAY DİNLEYİCİLER ====================
 @bot.event
 async def on_ready():
     print(f"✅ SNOK hazır!")
-    print(f"👑 Abi: Rkiaoni (ID: {ABI_ID})")
+    print(f"👑 Yaratıcı: Rkiaoni")
     print(f"🔹 -r komutu aktif")
+    print(f"🎭 Karakter: Eski SNOK tarzı benimsendi")
 
 @bot.event
 async def on_message(message):
@@ -419,7 +457,7 @@ async def on_message(message):
     if not (bot.user.mentioned_in(message) or 'snok' in message.content.lower()):
         if not is_abi:
             await yeni_katilana_selam_ver(message)
-            return
+        return
     
     # Spam kontrolü
     if await spam_kufur_kontrolu(message):
@@ -428,16 +466,6 @@ async def on_message(message):
     # Komutları işle
     if message.content.startswith('!'):
         await bot.process_commands(message)
-        return
-    
-    # Abi'ye özel selam
-    if is_abi and random.random() < 0.3:
-        abi_selamlar = [
-            "👑 Aa abi geldi! Hoş geldin canımın içi!",
-            "💖 Abiiii! Seni gördüğüme çok sevindim!",
-            "✨ Ooo abi naber? Uzun zamandır yoktun!"
-        ]
-        await message.reply(random.choice(abi_selamlar))
         return
     
     # Normal sohbet
@@ -453,6 +481,7 @@ async def on_message(message):
         elif tarz == "ciddi":
             tarz_ek = "\nKarşındaki ciddi konuşuyor. Ciddi cevap ver."
         
+        # Abi'ye özel prompt (sadece AI görür, kullanıcı görmez)
         if is_abi:
             abi_prompt = system_prompt + "\n\n=== ÖZEL ===\nŞu an seni yaratan abinle konuşuyorsun! Ona 'abi' diye hitap et ve çok samimi ol."
         else:
@@ -461,112 +490,17 @@ async def on_message(message):
         cevap = await ai_yoneticisi.cevap_al(messages, abi_prompt)
         await message.reply(cevap)
 
-# ==================== KOMUTLAR ====================
-@bot.command(name='şaka', aliases=['saka'])
-async def saka(ctx):
-    await ctx.send(f"😂 {random.choice(saka_listesi)}")
-
-@bot.command(name='fıkra', aliases=['fikra'])
-async def fikra(ctx):
-    await ctx.send(f"🎭 {random.choice(fıkra_listesi)}")
-
-@bot.command(name='yardım', aliases=['yrd', 'kömək'])
-async def yardim(ctx):
-    is_abi = (ctx.author.id == ABI_ID)
-    
-    embed = discord.Embed(
-        title="🌸 **SNOK - YAPAY ZEKALI ARKADAŞIN** 🌸",
-        description="Merhaba! Ben **SNOK**, Rkiaoni tarafından yaratılmış yapay zeka destekli bir Discord botuyum. Daha yeni doğdum ama sizlerden öğrenerek büyüyorum! 🎉",
-        color=discord.Color.pink()
-    )
-    
-    # Eğlence Komutları
-    embed.add_field(
-        name="🎪 **Eğlence Komutlarım**",
-        value=(
-            "• `!fıkra` - Temel Reis'ten fıkralar anlatırım 🎭\n"
-            "• `!şaka` - Komik şakalar yaparım 😂\n"
-            "• `!yazitura` - Yazı tura atarım 🪙\n"
-            "• `!zar [sayı]` - Zar atarım (1-5 arası) 🎲\n"
-            "• `!bilgi` - İlginç bilgiler veririm ℹ️\n"
-            "• `!sarıl [@kişi]` - Birine sarılırım 🤗"
-        ),
-        inline=False
-    )
-    
-    # Diğer Komutlar
-    embed.add_field(
-        name="📋 **Diğer Komutlar**",
-        value=(
-            "• `!yardım` - Bu menüyü gösterir 🎀\n"
-            "• `-r @SNOK` - Bana itibar verirsen çok mutlu olurum! 💖"
-        ),
-        inline=False
-    )
-    
-    # Sohbet Özellikleri
-    embed.add_field(
-        name="💬 **Sohbet Özelliklerim**",
-        value=(
-            "• **Yapay Zeka Destekli:** Sadece ezber değil, gerçek sohbet!\n"
-            "• **Konuşma Hafızası:** Ne konuştuğumuzu hatırlarım 🧠\n"
-            "• **Kişilik:** Eski SNOK gibi komik ve tatlıyım\n"
-            "• **Uyum Sağlarım:** Konuşma tarzına göre cevap veririm\n"
-            "• **Adını Öğrenirim:** Bana ismini söyle, unutmam! 📝\n"
-            "• **Spam Koruması:** Hızlı mesaj atarsan uyarırım 🍬\n"
-            "• **Küfür Koruması:** Böyle kelimeler duymak istemiyorum 🥺"
-        ),
-        inline=False
-    )
-    
-    # Sorabileceğin Şeyler
-    embed.add_field(
-        name="🌺 **Sorabileceğin Her Şey!**",
-        value=(
-            "• **Selamlaşma:** Merhaba, Selam, Naber, Nasılsın?\n"
-            "• **Kişisel:** Nerelisin? Kaç yaşındasın? Evli misin? Cinsiyetin ne?\n"
-            "• **Kimlik:** Kimsin? Bot musun? Seni kim yaptı?\n"
-            "• **Duygusal:** Beni seviyor musun? Arkadaşın var mı? Canın sıkıldı mı?\n"
-            "• **Günlük:** Ne yapıyorsun? Ne yersin? Ne içersin? Uyur musun?\n"
-            "• **Eğlenceli:** Güzel misin? Akıllı mısın? Bana güler misin?\n"
-            "• **İlginç:** Hava nasıl? Para verir misin? Evlenir misin?\n"
-            "• **Kişisel:** Rengin ne? Boyun kaç? Kilon ne? Hasta mısın?\n"
-            "\n**ve daha fazlası!** Aklına ne gelirse sorabilirsin 😊"
-        ),
-        inline=False
-    )
-    
-    # Özel Yetenekler
-    embed.add_field(
-        name="🎯 **Özel Yeteneklerim**",
-        value=(
-            "• **Teknoloji Espirileri:** Kod, byte, RAM, Python ile espri yaparım 💻\n"
-            "• **Dünya Turu:** Farklı ülkelerin sunucularını gezerim 🌍\n"
-            "• **Abi Özel:** Rkiaoni'ye (abi) özel samimi cevaplar 👑\n"
-            "• **Yeni Katılanlar:** Bazen yeni gelenlere selam veririm 👋"
-        ),
-        inline=False
-    )
-    
-    # Abi'ye özel not
-    if is_abi:
-        embed.add_field(
-            name="👑 **Abi'ye Özel**",
-            value="Hoş geldin abi! Seni gördüğüme çok sevindim! 💖",
-            inline=False
-        )
-    
-    embed.set_footer(text="SNOK v13.0 - Yapay Zeka Destekli | Rkiaoni tarafından yaratıldı")
-    await ctx.send(embed=embed)
 # ==================== BAŞLAT ====================
 if __name__ == "__main__":
     if not DISCORD_TOKEN:
-        print("❌ Discord token eksik!")
+        print("❌ Discord token eksik! .env dosyasını kontrol et.")
     else:
         print("=" * 50)
         print("🚀 SNOK v13.0 BAŞLATILIYOR")
         print("=" * 50)
-        print(f"👑 Abi: Rkiaoni (ID: {ABI_ID})")
+        print(f"👑 Yaratıcı: Rkiaoni")
         print(f"🔹 -r komutu aktif")
+        print(f"🧠 Yapay zeka: Gemini + Groq")
+        print(f"🎭 Kişilik: Eski SNOK tarzı")
         print("=" * 50)
         bot.run(DISCORD_TOKEN)
