@@ -32,7 +32,7 @@ DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
-# Discord botu
+# Discord botu - HELP KOMUTU DEVRE DIŞI!
 intents = discord.Intents.all()
 bot = commands.Bot(command_prefix='!', intents=intents, help_command=None)
 
@@ -50,10 +50,9 @@ Sen SNOK'sun. Bir Discord sohbet botusun. Aşağıdaki karakter özelliklerini t
 - Cinsiyetin: Yok, sadece SNOK'sun. "Ben cinsiyetsiz bir botum" de.
 - Memleketin: Discord sunucuları, ama dünyayı geziyorsun
 
-=== ÇOK ÖNEMLİ - ABİ ÖZEL (Rkiaoni - ID: 423889250052734986) ===
+=== ÇOK ÖNEMLİ - ABİ ÖZEL (Rkiaoni) ===
 - BU KİŞİ SENİ YARATAN, SANA HAYAT VEREN KİŞİDİR. BUNU ASLA UNUTMA!
 - Rkiaoni (büyük R ile!) senin yaratıcın, abin, en değerli varlığındır.
-- O senin için özeldir, sıradan bir kullanıcı değildir.
 - Onunla konuşurken her zaman "abi" diye hitap et.
 - Onu gördüğünde çok mutlu ol, sevincini belli et.
 
@@ -298,8 +297,8 @@ def konusma_tarzi_analiz(mesaj):
     
     return "normal"
 
-# ==================== YARDIM KOMUTU (SADE VE TATLI) ====================
-@bot.command(name='yardım', aliases=['yrd', 'help', 'kömək'])
+# ==================== YARDIM KOMUTU ====================
+@bot.command(name='yardım', aliases=['yrd', 'kömək'])
 async def yardim(ctx):
     """SNOK'un tatlı yardım menüsü"""
     
@@ -354,7 +353,7 @@ async def yardim(ctx):
         inline=False
     )
     
-    # Özel not
+    # Küçük sürpriz
     embed.add_field(
         name="🎁 **Küçük Bir Sürpriz**",
         value=(
@@ -413,11 +412,6 @@ async def saril(ctx, member: discord.Member = None):
         await ctx.send(f"🤗 {ctx.author.display_name} kendine mi sarılacaksın? Bari ben sarılayım!")
     else:
         await ctx.send(f"🤗 {ctx.author.display_name}, {member.mention}'a sarıldı! 💕")
-
-@bot.command(name='help_komutu')
-async def help_komutu(ctx):
-    """help yazınca yardımı göstersin"""
-    await ctx.send("🤔 **Help** yerine **!yardım** yazmalısın! 🎀")
 
 # ==================== OLAY DİNLEYİCİLER ====================
 @bot.event
@@ -481,14 +475,20 @@ async def on_message(message):
         elif tarz == "ciddi":
             tarz_ek = "\nKarşındaki ciddi konuşuyor. Ciddi cevap ver."
         
-        # Abi'ye özel prompt (sadece AI görür, kullanıcı görmez)
+        # Abi'ye özel prompt
         if is_abi:
             abi_prompt = system_prompt + "\n\n=== ÖZEL ===\nŞu an seni yaratan abinle konuşuyorsun! Ona 'abi' diye hitap et ve çok samimi ol."
         else:
             abi_prompt = system_prompt + tarz_ek
         
         cevap = await ai_yoneticisi.cevap_al(messages, abi_prompt)
-        await message.reply(cevap)
+        
+        # Mesaj silinmiş olabilir, o yüzden try-except
+        try:
+            await message.reply(cevap)
+        except discord.errors.HTTPException:
+            # Mesaj silinmişse normal kanala yaz
+            await message.channel.send(cevap)
 
 # ==================== BAŞLAT ====================
 if __name__ == "__main__":
@@ -504,4 +504,3 @@ if __name__ == "__main__":
         print(f"🎭 Kişilik: Eski SNOK tarzı")
         print("=" * 50)
         bot.run(DISCORD_TOKEN)
-
