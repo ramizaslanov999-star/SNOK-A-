@@ -414,7 +414,7 @@ async def saril(ctx, member: discord.Member = None):
     else:
         await ctx.send(f"🤗 {ctx.author.display_name}, {member.mention}'a sarıldı! 💕")
 
-@bot.command(name='help')
+@bot.command(name='help_komutu')
 async def help_komutu(ctx):
     """help yazınca yardımı göstersin"""
     await ctx.send("🤔 **Help** yerine **!yardım** yazmalısın! 🎀")
@@ -504,3 +504,4 @@ if __name__ == "__main__":
         print(f"🎭 Kişilik: Eski SNOK tarzı")
         print("=" * 50)
         bot.run(DISCORD_TOKEN)
+
