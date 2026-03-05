@@ -26,6 +26,19 @@ def run_web():
 
 threading.Thread(target=run_web, daemon=True).start()
 # ==============================================================================
+load_dotenv()
+
+# Token'ları kontrol et - DEBUG İÇİN!
+DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+
+print(f"🔑 DISCORD_TOKEN: {'VAR' if DISCORD_TOKEN else 'YOK'}")
+print(f"🔑 GEMINI_API_KEY: {'VAR' if GEMINI_API_KEY else 'YOK'}")
+print(f"🔑 GROQ_API_KEY: {'VAR' if GROQ_API_KEY else 'YOK'}")
+
+if not DISCORD_TOKEN:
+    print("❌ HATA: Discord token bulunamadı!")
 
 load_dotenv()
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
@@ -504,3 +517,4 @@ if __name__ == "__main__":
         print(f"🎭 Kişilik: Eski SNOK tarzı")
         print("=" * 50)
         bot.run(DISCORD_TOKEN)
+
