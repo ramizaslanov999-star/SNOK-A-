@@ -26,9 +26,10 @@ def run_web():
 
 threading.Thread(target=run_web, daemon=True).start()
 # ==============================================================================
+
 load_dotenv()
 
-# Token'ları kontrol et - DEBUG İÇİN!
+# Token'ları kontrol et
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
@@ -39,11 +40,7 @@ print(f"🔑 GROQ_API_KEY: {'VAR' if GROQ_API_KEY else 'YOK'}")
 
 if not DISCORD_TOKEN:
     print("❌ HATA: Discord token bulunamadı!")
-
-load_dotenv()
-DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+    exit(1)
 
 # Discord botu - HELP KOMUTU DEVRE DIŞI!
 intents = discord.Intents.all()
@@ -270,7 +267,12 @@ async def yeni_katilana_selam_ver(message):
             return True
     return False
 
-# ==================== -R KOMUTU ====================
+# ==================== REPUTATION VERİTABANI (AYNI KİŞİ KONTROLÜ İÇİN) ====================
+rep_son_kisi = defaultdict(lambda: {"kisi": None, "zaman": 0, "bildirim": False})
+rep_cooldown = 3600  # 1 saat
+rep_bildirim_kanal_id = 1473947547365019812
+
+# ==================== -R KOMUTU (AYNI KİŞİ KONTROLLÜ) ====================
 r_tesekkurleri = [
     "🤗 Ayy çok tatlısın! Teşekkürler {isim}!",
     "🥰 Bana değer verdiğin için sağ ol {isim}!",
@@ -278,6 +280,110 @@ r_tesekkurleri = [
     "💖 Sen gerçekten çok iyi birisin {isim}!",
     "✨ Bana itibar verdiğin için teşekkürler {isim}!"
 ]
+
+@bot.command(name='rep', aliases=['r', '-r'])
+async def rep_ver(ctx, hedef: discord.Member = None):
+    """İtibar puanı verir - Aynı kişiye 1 saatte bir verilebilir"""
+    
+    # Hedef kontrolü
+    if not hedef:
+        embed = discord.Embed(
+            title="⚔️ **HATA** ⚔️",
+            description="Birini etiketlemelisin!\nKullanım: `-r @kullanıcı`",
+            color=0xFF0000
+        )
+        await ctx.send(embed=embed)
+        return
+    
+    # Kendine puan kontrolü
+    if hedef.id == ctx.author.id:
+        embed = discord.Embed(
+            title="⚔️ **KENDİNİ ONURLANDIRAMAZSIN** ⚔️",
+            description="Gerçek bir savaşçı kendi kılıcını sırtlamaz.",
+            color=0xFFA500
+        )
+        await ctx.send(embed=embed)
+        return
+    
+    simdi = time.time()
+    veren_id = ctx.author.id
+    hedef_id = hedef.id
+    
+    # AYNI KİŞİ KONTROLÜ - EN ÖNEMLİ KISIM!
+    if veren_id in rep_son_kisi and rep_son_kisi[veren_id]["kisi"] == hedef_id:
+        # Aynı kişiye tekrar vermeye çalışıyor
+        son_zaman = rep_son_kisi[veren_id]["zaman"]
+        gecen = simdi - son_zaman
+        
+        if gecen < rep_cooldown:
+            # Cooldown içinde aynı kişi
+            kalan = rep_cooldown - gecen
+            dakika = int(kalan // 60)
+            saniye = int(kalan % 60)
+            
+            embed = discord.Embed(
+                title="⚔️ **ONUR SIRADA BEKLİYOR** ⚔️",
+                description=f"**Aynı savaşçıya iki kez onur verilmez!**\n\n{hedef.mention} için bekleme süren bitmemiş.\n⏳ **{dakika} dakika {saniye} saniye** sonra başkasına verebilirsin.",
+                color=0xFF0000
+            )
+            await ctx.send(embed=embed)
+            return
+        else:
+            # Cooldown geçmiş ama son kişi aynı - yine engelle!
+            embed = discord.Embed(
+                title="⚔️ **ONUR SIRADA BEKLİYOR** ⚔️",
+                description=f"**Aynı savaşçıya tekrar onur veremezsin!**\n\nÖnce **başka birini** onurlandır, sonra {hedef.mention}'e dönebilirsin.",
+                color=0xFF0000
+            )
+            await ctx.send(embed=embed)
+            return
+    
+    # FARKLI KİŞİ - YAGPDB'NİN KOMUTUNU ÇALIŞTIR
+    try:
+        # YAGPDB'nin +giverep komutunu çalıştır
+        sonuc = await bot.get_command('giverep').callback(bot, ctx, hedef)
+        
+        # Başarılı olduysa kaydet
+        rep_son_kisi[veren_id]["kisi"] = hedef_id
+        rep_son_kisi[veren_id]["zaman"] = simdi
+        rep_son_kisi[veren_id]["bildirim"] = True
+        
+        # Bildirim zamanlayıcısı başlat
+        asyncio.create_task(bildirim_gonder(ctx.author, simdi + rep_cooldown))
+        
+        # Başarılı mesajı
+        tesekkur = random.choice(r_tesekkurleri).format(isim=hedef.display_name)
+        embed = discord.Embed(
+            title="🏆 **ONUR BAĞIŞLANDI!** 🏆",
+            description=f"{ctx.author.mention} → {hedef.mention}\n\n{tesekkur}",
+            color=0x00FF00
+        )
+        await ctx.send(embed=embed)
+        
+    except Exception as e:
+        embed = discord.Embed(
+            title="❌ **HATA**",
+            description=f"Puan verilemedi: {str(e)}",
+            color=0xFF0000
+        )
+        await ctx.send(embed=embed)
+
+async def bildirim_gonder(kullanici, bitis_zamani):
+    """Cooldown bitince bildirim gönder"""
+    simdi = time.time()
+    bekle = bitis_zamani - simdi
+    
+    if bekle > 0:
+        await asyncio.sleep(bekle)
+        
+        kanal = bot.get_channel(rep_bildirim_kanal_id)
+        if kanal:
+            embed = discord.Embed(
+                title="⚡ **GÜCÜN GERİ DÖNDÜ!** ⚡",
+                description=f"{kullanici.mention} 1 saatlik bekleme süren doldu! Artık yeni bir savaşçıya onur verebilirsin.\n\n_Unutma, aynı savaşçıya tekrar onur vermek için önce başkasına vermelisin._",
+                color=0x00FF00
+            )
+            await kanal.send(embed=embed)
 
 # ==================== ŞAKA VE FIKRA KOMUTLARI ====================
 saka_listesi = [
@@ -291,6 +397,45 @@ fıkra_listesi = [
     "Temel arkadaşıyla vapura binmiş. Biletçi sormuş: 'Biletiniz?' Temel: 'Yok.' Biletçi: 'Nerede?' Temel: 'Karadeniz'de!' 🚢",
     "Temel'e sormuşlar: 'En çok neyi seversin?' Temel: 'Para!' 'Peki ondan sonra?' Temel: 'Para üstü!' 💰"
 ]
+
+@bot.command(name='şaka', aliases=['saka'])
+async def saka(ctx):
+    await ctx.send(f"😂 {random.choice(saka_listesi)}")
+
+@bot.command(name='fıkra', aliases=['fikra'])
+async def fikra(ctx):
+    await ctx.send(f"🎭 {random.choice(fıkra_listesi)}")
+
+@bot.command(name='yazitura', aliases=['yt', 'yazi', 'tura'])
+async def yazi_tura(ctx):
+    sonuc = random.choice(['Yazı! 🪙', 'Tura! 🦅', 'Para dik durdu! 🤹'])
+    await ctx.send(f"🪙 **{ctx.author.display_name}** için: {sonuc}")
+
+@bot.command(name='zar', aliases=['dice'])
+async def zar_at(ctx, adet: int = 1):
+    if adet > 5:
+        adet = 5
+        await ctx.send("En fazla 5 zar atabilirim! 🎲")
+    
+    zarlar = [random.choice(['⚀', '⚁', '⚂', '⚃', '⚄', '⚅']) for _ in range(adet)]
+    await ctx.send(f"🎲 **{ctx.author.display_name}** için {adet} zar: {' '.join(zarlar)}")
+
+@bot.command(name='bilgi', aliases=['info'])
+async def bilgi_ver(ctx):
+    bilgiler = [
+        "Python yılan değil, bir programlama dilidir! 🐍",
+        "Discord'da ilk bot 2015'te yapıldı! 📅",
+        "Ben Rkiaoni tarafından yapıldım! 👑",
+        "Her gün yeni bir şey öğreniyorum! 📚"
+    ]
+    await ctx.send(f"ℹ️ {random.choice(bilgiler)}")
+
+@bot.command(name='sarıl', aliases=['saril', 'hug'])
+async def saril(ctx, member: discord.Member = None):
+    if member is None or member.id == ctx.author.id:
+        await ctx.send(f"🤗 {ctx.author.display_name} kendine mi sarılacaksın? Bari ben sarılayım!")
+    else:
+        await ctx.send(f"🤗 {ctx.author.display_name}, {member.mention}'a sarıldı! 💕")
 
 # ==================== KONUŞMA TARZI ANALİZİ ====================
 def konusma_tarzi_analiz(mesaj):
@@ -313,126 +458,37 @@ def konusma_tarzi_analiz(mesaj):
 # ==================== YARDIM KOMUTU ====================
 @bot.command(name='yardım', aliases=['yrd', 'kömək'])
 async def yardim(ctx):
-    """SNOK'un tatlı yardım menüsü"""
-    
     embed = discord.Embed(
         title="🌸 **SNOK - Yapay Zekalı Arkadaşın** 🌸",
-        description=(
-            "Merhaba! Ben **SNOK**, Rkiaoni tarafından yaratılmış yapay zeka destekli bir botum. "
-            "Daha yeni doğdum ama sizlerden öğrenerek büyüyorum! 🎉\n\n"
-            "_Bana @SNOK yazarak veya ismimi söyleyerek ulaşabilirsin._"
-        ),
+        description="Merhaba! Ben **SNOK**, Rkiaoni tarafından yaratılmış yapay zeka destekli bir botum. Daha yeni doğdum ama sizlerden öğrenerek büyüyorum! 🎉",
         color=discord.Color.pink()
     )
-    
-    # Eğlence Komutları
     embed.add_field(
         name="🎪 **Eğlence Komutları**",
-        value=(
-            "`!fıkra` - Temel'den fıkralar 🎭\n"
-            "`!şaka` - Komik şakalar 😂\n"
-            "`!yazitura` - Yazı tura 🪙\n"
-            "`!zar` - Zar atar 🎲\n"
-            "`!bilgi` - İlginç bilgiler ℹ️\n"
-            "`!sarıl` - Birine sarılır 🤗"
-        ),
-        inline=True
-    )
-    
-    # Nasıl Kullanılır
-    embed.add_field(
-        name="💬 **Nasıl Konuşurum?**",
-        value=(
-            "• Sadece ismimi söyle: 'Snok naber?'\n"
-            "• Beni etiketle: `@SNOK`\n"
-            "• Sorularına cevap veririm\n"
-            "• Espri yaparım, şakalaşırım\n"
-            "• Adını öğrenip hatırlarım"
-        ),
-        inline=True
-    )
-    
-    # Özellikler
-    embed.add_field(
-        name="✨ **Özelliklerim**",
-        value=(
-            "• 🧠 Yapay zeka sohbeti\n"
-            "• 📝 Konuşma hafızası\n"
-            "• 🛡️ Spam koruması\n"
-            "• 😇 Küfür engeli\n"
-            "• 🌍 2 dil (Türkçe/Azərbaycanca)\n"
-            "• 🎭 Eski SNOK gibi komik"
-        ),
+        value="`!fıkra` - Temel'den fıkralar 🎭\n`!şaka` - Komik şakalar 😂\n`!yazitura` - Yazı tura 🪙\n`!zar` - Zar atar 🎲\n`!bilgi` - İlginç bilgiler ℹ️\n`!sarıl` - Birine sarılır 🤗",
         inline=False
     )
-    
-    # Küçük sürpriz
     embed.add_field(
-        name="🎁 **Küçük Bir Sürpriz**",
-        value=(
-            "Bana `-r @SNOK` yazarak itibar verebilirsin, "
-            "çok mutlu olurum! 💖"
-        ),
+        name="👑 **İtibar Sistemi**",
+        value="`-r @kullanıcı` - İtibar puanı verir\n• Aynı kişiye 1 saatte bir verilebilir\n• Cooldown bitince bildirim gelir",
         inline=False
     )
-    
-    embed.set_footer(text="SNOK v13.0 - Yapay Zeka Destekli | Rkiaoni tarafından yaratıldı")
-    
+    embed.add_field(
+        name="💬 **Sohbet**",
+        value="Bana @SNOK yazarak veya 'snok' diyerek ulaşabilirsin",
+        inline=False
+    )
+    embed.set_footer(text="SNOK v14.0 - Aynı Kişi Kontrollü | Rkiaoni tarafından yaratıldı")
     await ctx.send(embed=embed)
-
-# ==================== DİĞER KOMUTLAR ====================
-@bot.command(name='şaka', aliases=['saka'])
-async def saka(ctx):
-    """Rastgele şaka yapar"""
-    await ctx.send(f"😂 {random.choice(saka_listesi)}")
-
-@bot.command(name='fıkra', aliases=['fikra'])
-async def fikra(ctx):
-    """Rastgele fıkra anlatır"""
-    await ctx.send(f"🎭 {random.choice(fıkra_listesi)}")
-
-@bot.command(name='yazitura', aliases=['yt', 'yazi', 'tura'])
-async def yazi_tura(ctx):
-    """Yazı tura atar"""
-    sonuc = random.choice(['Yazı! 🪙', 'Tura! 🦅', 'Para dik durdu! 🤹'])
-    await ctx.send(f"🪙 **{ctx.author.display_name}** için: {sonuc}")
-
-@bot.command(name='zar', aliases=['dice'])
-async def zar_at(ctx, adet: int = 1):
-    """Zar atar (1-5 arası)"""
-    if adet > 5:
-        adet = 5
-        await ctx.send("En fazla 5 zar atabilirim! 🎲")
-    
-    zarlar = [random.choice(['⚀', '⚁', '⚂', '⚃', '⚄', '⚅']) for _ in range(adet)]
-    await ctx.send(f"🎲 **{ctx.author.display_name}** için {adet} zar: {' '.join(zarlar)}")
-
-@bot.command(name='bilgi', aliases=['info'])
-async def bilgi_ver(ctx):
-    """İlginç bilgi verir"""
-    bilgiler = [
-        "Python yılan değil, bir programlama dilidir! 🐍",
-        "Discord'da ilk bot 2015'te yapıldı! 📅",
-        "Ben Rkiaoni tarafından yapıldım! 👑",
-        "Her gün yeni bir şey öğreniyorum! 📚"
-    ]
-    await ctx.send(f"ℹ️ {random.choice(bilgiler)}")
-
-@bot.command(name='sarıl', aliases=['saril', 'hug'])
-async def saril(ctx, member: discord.Member = None):
-    """Birine sarılır"""
-    if member is None or member.id == ctx.author.id:
-        await ctx.send(f"🤗 {ctx.author.display_name} kendine mi sarılacaksın? Bari ben sarılayım!")
-    else:
-        await ctx.send(f"🤗 {ctx.author.display_name}, {member.mention}'a sarıldı! 💕")
 
 # ==================== OLAY DİNLEYİCİLER ====================
 @bot.event
 async def on_ready():
     print(f"✅ SNOK hazır!")
     print(f"👑 Yaratıcı: Rkiaoni")
-    print(f"🔹 -r komutu aktif")
-    print(f"🎭 Karakter: Eski SNOK tarzı benimsendi")
+    print(f"🔹 -r komutu aktif (aynı kişi kontrollü)")
+    print(f"🧠 Yapay zeka: Gemini + Groq")
+    print(f"🎭 Kişilik: Eski SNOK tarzı")
 
 @bot.event
 async def on_message(message):
@@ -447,13 +503,6 @@ async def on_message(message):
     hafiza[user_id]["son_gorusme"] = simdi
     hafiza[user_id]["konusma_sayisi"] += 1
     hafiza[user_id]["konusma_tarzi"] = konusma_tarzi_analiz(message.content)
-    
-    # -r komutu
-    if message.content.startswith('-r'):
-        if len(message.mentions) > 0 and message.mentions[0].id == bot.user.id:
-            tesekkur = random.choice(r_tesekkurleri).format(isim=message.author.display_name)
-            await message.channel.send(tesekkur)
-            return
     
     # "Beni niye selamlamadın?" sorusu
     if "selamlamadın" in message.content.lower() and "niye" in message.content.lower():
@@ -496,11 +545,9 @@ async def on_message(message):
         
         cevap = await ai_yoneticisi.cevap_al(messages, abi_prompt)
         
-        # Mesaj silinmiş olabilir, o yüzden try-except
         try:
             await message.reply(cevap)
         except discord.errors.HTTPException:
-            # Mesaj silinmişse normal kanala yaz
             await message.channel.send(cevap)
 
 # ==================== BAŞLAT ====================
@@ -509,12 +556,11 @@ if __name__ == "__main__":
         print("❌ Discord token eksik! .env dosyasını kontrol et.")
     else:
         print("=" * 50)
-        print("🚀 SNOK v13.0 BAŞLATILIYOR")
+        print("🚀 SNOK v14.0 - AYNI KİŞİ KONTROLLÜ")
         print("=" * 50)
         print(f"👑 Yaratıcı: Rkiaoni")
-        print(f"🔹 -r komutu aktif")
+        print(f"🔹 -r komutu: Aktif (1 saat cooldown, aynı kişi engeli)")
         print(f"🧠 Yapay zeka: Gemini + Groq")
         print(f"🎭 Kişilik: Eski SNOK tarzı")
         print("=" * 50)
         bot.run(DISCORD_TOKEN)
-
