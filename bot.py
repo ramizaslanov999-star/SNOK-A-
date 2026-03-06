@@ -84,14 +84,6 @@ def bildirim_durumu_guncelle(veren_id, durum=1):
     conn.commit()
     conn.close()
 
-def bildirim_durumu_kontrol(veren_id):
-    conn = sqlite3.connect(DB_DOSYASI)
-    c = conn.cursor()
-    c.execute("SELECT bildirim_gonderildi FROM son_kisiler WHERE veren_id=?", (str(veren_id),))
-    sonuc = c.fetchone()
-    conn.close()
-    return sonuc[0] if sonuc else 0
-
 def tum_bildirimler_getir():
     conn = sqlite3.connect(DB_DOSYASI)
     c = conn.cursor()
@@ -100,14 +92,7 @@ def tum_bildirimler_getir():
     conn.close()
     return [{"veren_id": r[0], "zaman": r[1]} for r in sonuclar]
 
-system_prompt = """
-Sen SNOK'sun. Bir Discord sohbet botusun.
-- Adın SNOK. Rkiaoni tarafından yapıldın.
-- 17 yaşında, genç, enerjik, tatlı bir botsun.
-- Konuşurken bol bol emoji kullanırsın: 😊 🥰 🤗 😂 ✨
-- Şakacı, samimi ve arkadaş canlısısın.
-- Kısa ve doğal cevaplar ver.
-"""
+system_prompt = "Sen SNOK'sun, tatlı bir Discord botusun."
 
 AI_SERVICES = [
     {
@@ -192,97 +177,23 @@ class AIYoneticisi:
                     self.son_hata[service["name"]] = time.time()
                     continue
             await asyncio.sleep(10)
-        return random.choice(["😅 Çok yoğunum, birazdan dener misin?", "⚡ Enerjim düştü, hemen geliyorum!", "🤗 Bir saniye, düşünüyorum..."])
+        return random.choice(["😅 Çok yoğunum, birazdan dener misin?", "⚡ Enerjim düştü, hemen geliyorum!"])
 
 ai_yoneticisi = AIYoneticisi(AI_SERVICES)
-
-kufur_listesi = ['amk', 'aq', 'sik', 'pic', 'orospu', 'ibne', 'göt', 'yarrak', 'pust', 'anani', 'babani', 'sikeyim', 'sikik', 'amcik', 'amq', 'piç', 'orospu çocuğu', 'amına koyayım']
-
-hafiza = defaultdict(lambda: {
-    "ilk_gorusme": time.time(),
-    "son_gorusme": time.time(),
-    "konusma_sayisi": 0,
-    "bilgiler": {},
-    "konusma_tarzi": "normal"
-})
-
-son_mesaj_zamani = defaultdict(float)
-mesaj_sayaci = defaultdict(list)
-
-async def spam_kufur_kontrolu(message):
-    user_id = message.author.id
-    simdi = time.time()
-    icerik = message.content.lower()
-    if simdi - son_mesaj_zamani[user_id] < 1.5:
-        mesaj_sayaci[user_id].append(simdi)
-        if len(mesaj_sayaci[user_id]) > 3 and simdi - mesaj_sayaci[user_id][0] < 5:
-            await message.reply("🍬 **Hey!** Çok hızlı mesaj atıyorsun, yavaş ol! 🍭")
-            return True
-    son_mesaj_zamani[user_id] = simdi
-    if len(mesaj_sayaci[user_id]) > 10:
-        mesaj_sayaci[user_id] = mesaj_sayaci[user_id][-5:]
-    for kufur in kufur_listesi:
-        if kufur in icerik:
-            await message.reply("😳 **Ayıp!** Böyle kelimeler duymak istemiyorum! 🥺")
-            return True
-    return False
-
-yeni_katilanlar = {}
-
-async def yeni_katilana_selam_ver(message):
-    user_id = message.author.id
-    simdi = time.time()
-    if user_id not in yeni_katilanlar or simdi - yeni_katilanlar[user_id] > 3600:
-        yeni_katilanlar[user_id] = simdi
-        if random.random() < 0.3:
-            selamlar = [
-                f"👋 Merhaba {message.author.display_name}! Hoş geldin sohbete!",
-                f"😊 Selam {message.author.display_name}! Nasılsın?",
-                f"🤗 Ooo {message.author.display_name}, geldin mi? Bekliyordum!"
-            ]
-            await message.reply(random.choice(selamlar))
-            return True
-    return False
-
-r_tesekkurleri = [
-    "🤗 Ayy çok tatlısın! Teşekkürler {isim}!",
-    "🥰 Bana değer verdiğin için sağ ol {isim}!",
-    "😊 İyilik yap iyilik bul {isim}!",
-    "💖 Sen gerçekten çok iyi birisin {isim}!",
-    "✨ Bana itibar verdiğin için teşekkürler {isim}!"
-]
-
-saka_listesi = [
-    "Bir gün bilgisayar fareye sormuş: 'Benimle oynar mısın?' Fare: 'Tabii ama önce şu kablolarını topla!' 🖱️",
-    "Botlar neden yalan söylemez? Çünkü onların RAM'i yalanı kaldırmaz! 🤖",
-    "Seninle ben çok iyi anlaşıyoruz. Çünkü ikimiz de sürekli mesajlaşıyoruz! 💬",
-    "Bir gün bir bot 'Çok yoruldum' demiş. O günden beri reboot bekliyor! 🔄"
-]
-
-fıkra_listesi = [
-    "Temel arkadaşıyla vapura binmiş. Biletçi sormuş: 'Biletiniz?' Temel: 'Yok.' Biletçi: 'Nerede?' Temel: 'Karadeniz'de!' 🚢",
-    "Temel'e sormuşlar: 'En çok neyi seversin?' Temel: 'Para!' 'Peki ondan sonra?' Temel: 'Para üstü!' 💰"
-]
 
 rep_cooldown = 3600
 
 @bot.command(name='r', aliases=['-r'])
 async def rep_ver(ctx, hedef: discord.Member = None):
+    print(f"📝 -r komutu çalıştı! Yazan: {ctx.author}, Hedef: {hedef}")
+    
     if not hedef:
-        embed = discord.Embed(
-            title="⚔️ **HATA** ⚔️",
-            description="Birini etiketlemelisin!\nKullanım: `-r @kullanıcı`",
-            color=0xFF0000
-        )
+        embed = discord.Embed(title="⚔️ **HATA**", description="Birini etiketle! `-r @kullanıcı`", color=0xFF0000)
         await ctx.send(embed=embed)
         return
     
     if hedef.id == ctx.author.id:
-        embed = discord.Embed(
-            title="⚔️ **KENDİNİ ONURLANDIRAMAZSIN** ⚔️",
-            description="İtibar kazanılır, yazılmaz. Kendine puan veremezsin.",
-            color=0xFFA500
-        )
+        embed = discord.Embed(title="⚔️ **KENDİNİ ONURLANDIRAMAZSIN**", description="Kendine puan veremezsin.", color=0xFFA500)
         await ctx.send(embed=embed)
         return
     
@@ -301,15 +212,15 @@ async def rep_ver(ctx, hedef: discord.Member = None):
             saniye = int(kalan % 60)
             embed = discord.Embed(
                 title="⏳ **Sabır...**",
-                description=f"Yeni bir saygı bırakmak için zamanın dolmasını beklemelisin.\n\n⏱️ **{dakika} dakika {saniye} saniye** kaldı.",
+                description=f"Bekleme süresi: **{dakika} dakika {saniye} saniye**",
                 color=0xFFFF00
             )
             await ctx.send(embed=embed)
             return
         else:
             embed = discord.Embed(
-                title="⚔️ **Aynı Kişi** ⚔️",
-                description="Aynı kişiye tekrar itibar bırakamazsın. Gücünü başka birine aktar.",
+                title="⚔️ **Aynı Kişi**",
+                description="Aynı kişiye tekrar veremezsin. Önce başkasına ver.",
                 color=0xFF0000
             )
             await ctx.send(embed=embed)
@@ -318,189 +229,72 @@ async def rep_ver(ctx, hedef: discord.Member = None):
     try:
         log_kanal = bot.get_channel(LOG_KANAL_ID)
         if log_kanal:
-            # -snokrep komutunu gönder (değişen kısım bu!)
             await log_kanal.send(f"-snokrep {hedef.id}")
-            print(f"✅ YAGPDB'ye iletildi: -snokrep {hedef.id}")
+            print(f"✅ Log kanalına gönderildi: -snokrep {hedef.id}")
             
             son_kisi_kaydet(veren_id, hedef_id, simdi)
             
             embed = discord.Embed(
-                title="🌟 **Onur Yükseldi** 🌟",
-                description=f"Gölgeler arasından bir isim daha yükseldi…\n\n**{hedef.display_name}**, **{ctx.author.display_name}** tarafından onurlandırıldı.",
+                title="✅ **Onur Verildi**",
+                description=f"{ctx.author.mention} → {hedef.mention}",
                 color=0x00FF00
             )
             await ctx.send(embed=embed)
         else:
+            print(f"❌ Log kanalı bulunamadı! ID: {LOG_KANAL_ID}")
             await ctx.send("❌ Log kanalı bulunamadı!")
             
     except Exception as e:
         print(f"❌ HATA: {e}")
-        embed = discord.Embed(title="❌ **HATA**", description=f"Puan verilemedi: {str(e)}", color=0xFF0000)
-        await ctx.send(embed=embed)
+        await ctx.send(f"❌ Hata: {e}")
 
-@bot.command(name='şaka', aliases=['saka'])
-async def saka(ctx):
-    await ctx.send(f"😂 {random.choice(saka_listesi)}")
-
-@bot.command(name='fıkra', aliases=['fikra'])
-async def fikra(ctx):
-    await ctx.send(f"🎭 {random.choice(fıkra_listesi)}")
-
-@bot.command(name='yazitura', aliases=['yt', 'yazi', 'tura'])
-async def yazi_tura(ctx):
-    sonuc = random.choice(['Yazı! 🪙', 'Tura! 🦅', 'Para dik durdu! 🤹'])
-    await ctx.send(f"🪙 **{ctx.author.display_name}** için: {sonuc}")
-
-@bot.command(name='zar', aliases=['dice'])
-async def zar_at(ctx, adet: int = 1):
-    if adet > 5:
-        adet = 5
-        await ctx.send("En fazla 5 zar atabilirim! 🎲")
-    zarlar = [random.choice(['⚀', '⚁', '⚂', '⚃', '⚄', '⚅']) for _ in range(adet)]
-    await ctx.send(f"🎲 **{ctx.author.display_name}** için {adet} zar: {' '.join(zarlar)}")
-
-@bot.command(name='bilgi', aliases=['info'])
-async def bilgi_ver(ctx):
-    bilgiler = [
-        "Python yılan değil, bir programlama dilidir! 🐍",
-        "Discord'da ilk bot 2015'te yapıldı! 📅",
-        "Ben Rkiaoni tarafından yapıldım! 👑",
-        "Her gün yeni bir şey öğreniyorum! 📚"
-    ]
-    await ctx.send(f"ℹ️ {random.choice(bilgiler)}")
-
-@bot.command(name='sarıl', aliases=['saril', 'hug'])
-async def saril(ctx, member: discord.Member = None):
-    if member is None or member.id == ctx.author.id:
-        await ctx.send(f"🤗 {ctx.author.display_name} kendine mi sarılacaksın? Bari ben sarılayım!")
-    else:
-        await ctx.send(f"🤗 {ctx.author.display_name}, {member.mention}'a sarıldı! 💕")
-
-def konusma_tarzi_analiz(mesaj):
-    mesaj_lower = mesaj.lower()
-    alayli_kelimeler = ['alay', 'dalga', 'salak', 'aptal', 'mal']
-    if any(k in mesaj_lower for k in alayli_kelimeler):
-        return "alayli"
-    tatli_kelimeler = ['❤️', '💕', '😘', '😍', 'tatlı', 'canım']
-    if any(k in mesaj_lower for k in tatli_kelimeler):
-        return "tatli"
-    ciddi_kelimeler = ['sorun', 'problem', 'yardım', 'lütfen', 'önemli']
-    if any(k in mesaj_lower for k in ciddi_kelimeler):
-        return "ciddi"
-    return "normal"
-
-@bot.command(name='yardım', aliases=['yrd', 'kömək'])
+@bot.command(name='yardım', aliases=['yrd'])
 async def yardim(ctx):
-    embed = discord.Embed(
-        title="🌸 **SNOK - Yapay Zekalı Arkadaşın** 🌸",
-        description="Merhaba! Ben **SNOK**, Rkiaoni tarafından yaratılmış yapay zeka destekli bir botum.",
-        color=discord.Color.pink()
-    )
-    embed.add_field(
-        name="🎪 **Eğlence Komutları**",
-        value="`!fıkra` - Temel'den fıkralar 🎭\n`!şaka` - Komik şakalar 😂\n`!yazitura` - Yazı tura 🪙\n`!zar` - Zar atar 🎲\n`!bilgi` - İlginç bilgiler ℹ️\n`!sarıl` - Birine sarılır 🤗",
-        inline=False
-    )
-    embed.add_field(
-        name="👑 **İtibar Sistemi**",
-        value="`-r @kullanıcı` - İtibar puanı verir\n• Aynı kişiye tekrar veremezsin (cooldown bitse bile)\n• 1 saat sonra bildirim gelir",
-        inline=False
-    )
-    embed.add_field(
-        name="💬 **Sohbet**",
-        value="Bana @SNOK yazarak veya 'snok' diyerek ulaşabilirsin",
-        inline=False
-    )
-    embed.set_footer(text="SNOK v18.1 - YAGPDB Entegre | Rkiaoni tarafından yaratıldı")
+    embed = discord.Embed(title="🌸 SNOK", description="Merhaba! Ben SNOK.", color=0x00FF00)
+    embed.add_field(name="-r @kişi", value="İtibar puanı verir", inline=False)
     await ctx.send(embed=embed)
 
 @bot.event
 async def on_ready():
-    print(f"✅ SNOK hazır!")
-    print(f"👑 Yaratıcı: Rkiaoni")
-    print(f"🔹 -r komutu: YAGPDB entegre + aynı kişi kontrolü")
-    print(f"📋 Log Kanalı: {LOG_KANAL_ID}")
-    print(f"🔔 Bildirim Kanalı: {BILDIRIM_KANAL_ID}")
-    print(f"🧠 Yapay zeka: Gemini + Groq")
-    print(f"⏰ Bildirim kontrolü başlatılıyor...")
+    print(f"✅ SNOK hazır: {bot.user}")
+    print(f"📋 Log Kanalı ID: {LOG_KANAL_ID}")
+    print(f"🔔 Bildirim Kanalı ID: {BILDIRIM_KANAL_ID}")
     bot.loop.create_task(bildirim_kontrol())
 
 async def bildirim_kontrol():
     await bot.wait_until_ready()
-    print(f"⏰ Bildirim kontrolü başladı (5 dakikada bir kontrol)")
+    print(f"⏰ Bildirim kontrolü başladı")
     while not bot.is_closed():
         try:
             simdi = int(time.time())
             bildirimler = tum_bildirimler_getir()
             kanal = bot.get_channel(BILDIRIM_KANAL_ID)
-            
             for b in bildirimler:
                 if simdi >= b["zaman"]:
                     if kanal:
-                        embed = discord.Embed(
-                            title="⚡ **İtibar Defteri Açıldı** ⚡",
-                            description=f"<@{b['veren_id']}> Bekleme süresi sona erdi. İtibar defteri yeniden açık.",
-                            color=0x00FF00
-                        )
-                        await kanal.send(embed=embed)
+                        await kanal.send(f"<@{b['veren_id']}> 1 saat doldu!")
                         bildirim_durumu_guncelle(b["veren_id"], 1)
         except Exception as e:
-            print(f"❌ Bildirim kontrol hatası: {e}")
+            print(f"❌ Bildirim hatası: {e}")
         await asyncio.sleep(300)
 
 @bot.event
 async def on_message(message):
     if message.author.bot:
         return
-    user_id = message.author.id
-    simdi = time.time()
-    is_abi = (user_id == ABI_ID)
-    hafiza[user_id]["son_gorusme"] = simdi
-    hafiza[user_id]["konusma_sayisi"] += 1
-    hafiza[user_id]["konusma_tarzi"] = konusma_tarzi_analiz(message.content)
-    if "selamlamadın" in message.content.lower() and "niye" in message.content.lower():
-        await message.reply("😅 Aa fark etmemişim, kusura bakma! Şimdi sana kocaman bir merhaba! 👋😊")
-        return
-    if not (bot.user.mentioned_in(message) or 'snok' in message.content.lower()):
-        if not is_abi:
-            await yeni_katilana_selam_ver(message)
-        return
-    if await spam_kufur_kontrolu(message):
-        return
-    if message.content.startswith('!'):
+    if message.content.startswith('-r'):
         await bot.process_commands(message)
         return
-    async with message.channel.typing():
-        messages = [{"role": "user", "content": message.content}]
-        tarz = hafiza[user_id]["konusma_tarzi"]
-        tarz_ek = ""
-        if tarz == "alayli":
-            tarz_ek = "\nKarşındaki alaylı konuşuyor. Biraz sinirlenebilirsin."
-        elif tarz == "tatli":
-            tarz_ek = "\nKarşındaki tatlı konuşuyor. Sen de tatlı cevap ver."
-        elif tarz == "ciddi":
-            tarz_ek = "\nKarşındaki ciddi konuşuyor. Ciddi cevap ver."
-        if is_abi:
-            abi_prompt = system_prompt + "\n\n=== ÖZEL ===\nŞu an seni yaratan abinle konuşuyorsun! Ona 'abi' diye hitap et ve çok samimi ol."
-        else:
-            abi_prompt = system_prompt + tarz_ek
-        cevap = await ai_yoneticisi.cevap_al(messages, abi_prompt)
-        try:
-            await message.reply(cevap)
-        except discord.errors.HTTPException:
-            await message.channel.send(cevap)
+    if bot.user.mentioned_in(message) or 'snok' in message.content.lower():
+        async with message.channel.typing():
+            await message.reply("Merhaba! Ben SNOK.")
+    await bot.process_commands(message)
 
 if __name__ == "__main__":
-    if not DISCORD_TOKEN:
-        print("❌ Discord token eksik!")
-    else:
-        print("=" * 60)
-        print("🚀 SNOK v18.1 - YAGPDB ENTEGRE (-snokrep)")
-        print("=" * 60)
-        print(f"👑 Yaratıcı: Rkiaoni")
-        print(f"🔹 -r komutu: Aktif (aynı kişi kontrolü)")
-        print(f"📋 Log Kanalı: {LOG_KANAL_ID} -> -snokrep gönderiliyor")
-        print(f"🔔 Bildirim Kanalı: {BILDIRIM_KANAL_ID}")
-        print(f"⏰ Bildirim: 5 dakikada bir kontrol")
-        print("=" * 60)
-        bot.run(DISCORD_TOKEN)
+    print("=" * 50)
+    print("🚀 SNOK BAŞLATILIYOR")
+    print("=" * 50)
+    print(f"📋 Log Kanalı: {LOG_KANAL_ID}")
+    print(f"🔔 Bildirim Kanalı: {BILDIRIM_KANAL_ID}")
+    print("=" * 50)
+    bot.run(DISCORD_TOKEN)
