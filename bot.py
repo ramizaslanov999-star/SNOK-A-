@@ -43,6 +43,8 @@ intents = discord.Intents.all()
 bot = commands.Bot(command_prefix='!', intents=intents, help_command=None)
 
 ABI_ID = 423889250052734986
+LOG_KANAL_ID = 1475733574413062215
+BILDIRIM_KANAL_ID = 1473947547365019812
 
 DB_DOSYASI = "reputation.db"
 
@@ -263,9 +265,8 @@ fıkra_listesi = [
 ]
 
 rep_cooldown = 3600
-rep_bildirim_kanal_id = 1473947547365019812
 
-@bot.command(name='rep', aliases=['r', '-r'])
+@bot.command(name='r', aliases=['-r'])
 async def rep_ver(ctx, hedef: discord.Member = None):
     if not hedef:
         embed = discord.Embed(
@@ -315,9 +316,9 @@ async def rep_ver(ctx, hedef: discord.Member = None):
             return
     
     try:
-        yagpdb_kanal = bot.get_channel(1475733574413062215)
-        if yagpdb_kanal:
-            await yagpdb_kanal.send(f"!snokrep {hedef.id}")
+        log_kanal = bot.get_channel(LOG_KANAL_ID)
+        if log_kanal:
+            await log_kanal.send(f"!snokrep {hedef.id}")
             print(f"✅ YAGPDB'ye iletildi: !snokrep {hedef.id}")
             
             son_kisi_kaydet(veren_id, hedef_id, simdi)
@@ -329,7 +330,7 @@ async def rep_ver(ctx, hedef: discord.Member = None):
             )
             await ctx.send(embed=embed)
         else:
-            await ctx.send("❌ YAGPDB kanalı bulunamadı!")
+            await ctx.send("❌ Log kanalı bulunamadı!")
             
     except Exception as e:
         print(f"❌ HATA: {e}")
@@ -372,7 +373,7 @@ async def saril(ctx, member: discord.Member = None):
     if member is None or member.id == ctx.author.id:
         await ctx.send(f"🤗 {ctx.author.display_name} kendine mi sarılacaksın? Bari ben sarılayım!")
     else:
-        await ctx.send(f"🤗 {ctx.author.display_name}, {member.mention}'a sarıldı! 💕")
+        await ctx.send(f"🤗 {ctx.author.display_name}, {member.mention}'a sarıldi! 💕")
 
 def konusma_tarzi_analiz(mesaj):
     mesaj_lower = mesaj.lower()
@@ -409,7 +410,7 @@ async def yardim(ctx):
         value="Bana @SNOK yazarak veya 'snok' diyerek ulaşabilirsin",
         inline=False
     )
-    embed.set_footer(text="SNOK v17.0 - YAGPDB Entegre | Rkiaoni tarafından yaratıldı")
+    embed.set_footer(text="SNOK v18.0 - YAGPDB Entegre | Rkiaoni tarafından yaratıldı")
     await ctx.send(embed=embed)
 
 @bot.event
@@ -417,6 +418,8 @@ async def on_ready():
     print(f"✅ SNOK hazır!")
     print(f"👑 Yaratıcı: Rkiaoni")
     print(f"🔹 -r komutu: YAGPDB entegre + aynı kişi kontrolü")
+    print(f"📋 Log Kanalı: {LOG_KANAL_ID}")
+    print(f"🔔 Bildirim Kanalı: {BILDIRIM_KANAL_ID}")
     print(f"🧠 Yapay zeka: Gemini + Groq")
     print(f"⏰ Bildirim kontrolü başlatılıyor...")
     bot.loop.create_task(bildirim_kontrol())
@@ -428,7 +431,7 @@ async def bildirim_kontrol():
         try:
             simdi = int(time.time())
             bildirimler = tum_bildirimler_getir()
-            kanal = bot.get_channel(rep_bildirim_kanal_id)
+            kanal = bot.get_channel(BILDIRIM_KANAL_ID)
             
             for b in bildirimler:
                 if simdi >= b["zaman"]:
@@ -490,11 +493,13 @@ if __name__ == "__main__":
     if not DISCORD_TOKEN:
         print("❌ Discord token eksik!")
     else:
-        print("=" * 50)
-        print("🚀 SNOK v17.0 - YAGPDB ENTEGRE + BİLDİRİM")
-        print("=" * 50)
+        print("=" * 60)
+        print("🚀 SNOK v18.0 - YAGPDB ENTEGRE + BİLDİRİM")
+        print("=" * 60)
         print(f"👑 Yaratıcı: Rkiaoni")
-        print(f"🔹 -r komutu: YAGPDB entegre + aynı kişi kontrolü")
+        print(f"🔹 -r komutu: Aktif (aynı kişi kontrolü)")
+        print(f"📋 Log Kanalı: {LOG_KANAL_ID}")
+        print(f"🔔 Bildirim Kanalı: {BILDIRIM_KANAL_ID}")
         print(f"⏰ Bildirim: 5 dakikada bir kontrol")
-        print("=" * 50)
+        print("=" * 60)
         bot.run(DISCORD_TOKEN)
