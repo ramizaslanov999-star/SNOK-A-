@@ -318,8 +318,9 @@ async def rep_ver(ctx, hedef: discord.Member = None):
     try:
         log_kanal = bot.get_channel(LOG_KANAL_ID)
         if log_kanal:
-            await log_kanal.send(f"!snokrep {hedef.id}")
-            print(f"✅ YAGPDB'ye iletildi: !snokrep {hedef.id}")
+            # -snokrep komutunu gönder (değişen kısım bu!)
+            await log_kanal.send(f"-snokrep {hedef.id}")
+            print(f"✅ YAGPDB'ye iletildi: -snokrep {hedef.id}")
             
             son_kisi_kaydet(veren_id, hedef_id, simdi)
             
@@ -373,7 +374,7 @@ async def saril(ctx, member: discord.Member = None):
     if member is None or member.id == ctx.author.id:
         await ctx.send(f"🤗 {ctx.author.display_name} kendine mi sarılacaksın? Bari ben sarılayım!")
     else:
-        await ctx.send(f"🤗 {ctx.author.display_name}, {member.mention}'a sarıldi! 💕")
+        await ctx.send(f"🤗 {ctx.author.display_name}, {member.mention}'a sarıldı! 💕")
 
 def konusma_tarzi_analiz(mesaj):
     mesaj_lower = mesaj.lower()
@@ -410,7 +411,7 @@ async def yardim(ctx):
         value="Bana @SNOK yazarak veya 'snok' diyerek ulaşabilirsin",
         inline=False
     )
-    embed.set_footer(text="SNOK v18.0 - YAGPDB Entegre | Rkiaoni tarafından yaratıldı")
+    embed.set_footer(text="SNOK v18.1 - YAGPDB Entegre | Rkiaoni tarafından yaratıldı")
     await ctx.send(embed=embed)
 
 @bot.event
@@ -494,11 +495,11 @@ if __name__ == "__main__":
         print("❌ Discord token eksik!")
     else:
         print("=" * 60)
-        print("🚀 SNOK v18.0 - YAGPDB ENTEGRE + BİLDİRİM")
+        print("🚀 SNOK v18.1 - YAGPDB ENTEGRE (-snokrep)")
         print("=" * 60)
         print(f"👑 Yaratıcı: Rkiaoni")
         print(f"🔹 -r komutu: Aktif (aynı kişi kontrolü)")
-        print(f"📋 Log Kanalı: {LOG_KANAL_ID}")
+        print(f"📋 Log Kanalı: {LOG_KANAL_ID} -> -snokrep gönderiliyor")
         print(f"🔔 Bildirim Kanalı: {BILDIRIM_KANAL_ID}")
         print(f"⏰ Bildirim: 5 dakikada bir kontrol")
         print("=" * 60)
