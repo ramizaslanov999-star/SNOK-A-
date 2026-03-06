@@ -54,16 +54,17 @@ c.execute('''CREATE TABLE IF NOT EXISTS son_kisiler
              (veren_id TEXT PRIMARY KEY, 
               hedef_id TEXT, 
               zaman INTEGER,
-              bildirim_gonderildi INTEGER DEFAULT 0)''')
+              bildirim_gonderildi INTEGER DEFAULT 0,
+              puan TEXT DEFAULT '{}')''')
 conn.commit()
 conn.close()
 print("✅ Veritabanı hazır!")
 
-def son_kisi_kaydet(veren_id, hedef_id, zaman):
+def son_kisi_kaydet(veren_id, hedef_id, zaman, puan_bilgisi=""):
     conn = sqlite3.connect(DB_DOSYASI)
     c = conn.cursor()
-    c.execute("REPLACE INTO son_kisiler (veren_id, hedef_id, zaman, bildirim_gonderildi) VALUES (?, ?, ?, 0)",
-              (str(veren_id), str(hedef_id), int(zaman)))
+    c.execute("REPLACE INTO son_kisiler (veren_id, hedef_id, zaman, bildirim_gonderildi, puan) VALUES (?, ?, ?, 0, ?)",
+              (str(veren_id), str(hedef_id), int(zaman), puan_bilgisi))
     conn.commit()
     conn.close()
 
@@ -91,6 +92,37 @@ def tum_bildirimler_getir():
     sonuclar = c.fetchall()
     conn.close()
     return sonuclar
+
+def hedef_puan_getir(hedef_id):
+    conn = sqlite3.connect(DB_DOSYASI)
+    c = conn.cursor()
+    c.execute("SELECT puan FROM son_kisiler WHERE veren_id=?", (str(hedef_id),))
+    sonuc = c.fetchone()
+    conn.close()
+    if sonuc and sonuc[0]:
+        try:
+            puanlar = eval(sonuc[0])
+            return puanlar.get("toplam", 0)
+        except:
+            return 0
+    return 0
+
+def hedef_puan_guncelle(hedef_id, yeni_puan):
+    conn = sqlite3.connect(DB_DOSYASI)
+    c = conn.cursor()
+    c.execute("SELECT puan FROM son_kisiler WHERE veren_id=?", (str(hedef_id),))
+    sonuc = c.fetchone()
+    if sonuc:
+        try:
+            puanlar = eval(sonuc[0])
+        except:
+            puanlar = {}
+        puanlar["toplam"] = yeni_puan
+        c.execute("UPDATE son_kisiler SET puan=? WHERE veren_id=?", (str(puanlar), str(hedef_id)))
+    else:
+        c.execute("INSERT INTO son_kisiler (veren_id, puan) VALUES (?, ?)", (str(hedef_id), str({"toplam": yeni_puan})))
+    conn.commit()
+    conn.close()
 
 system_prompt = """
 Sen SNOK'sun. Bir Discord sohbet botusun.
@@ -310,11 +342,19 @@ async def rep_ver(ctx, hedef: discord.Member = None):
             await log_kanal.send(f"-snokrep {hedef.id}")
             print(f"✅ Log kanalına gönderildi: -snokrep {hedef.id}")
             
-            son_kisi_kaydet(veren_id, hedef_id, simdi)
+            # YAGPDB'den puanı almak için biraz bekle
+            await asyncio.sleep(2)
+            
+            # Hedefin toplam puanını hesapla (basit sayaç)
+            mevcut_puan = hedef_puan_getir(hedef_id)
+            yeni_puan = mevcut_puan + 1
+            hedef_puan_guncelle(hedef_id, yeni_puan)
+            
+            son_kisi_kaydet(veren_id, hedef_id, simdi, f"{{'toplam':{yeni_puan}}}")
             
             embed = discord.Embed(
                 title="🌟 **Onur Yükseldi** 🌟",
-                description=f"Gölgeler arasından bir isim daha yükseldi…\n\n**{hedef.display_name}**, **{ctx.author.display_name}** tarafından onurlandırıldı.",
+                description=f"Gölgeler arasından bir isim daha yükseldi…\n\n**{hedef.display_name}**, **{ctx.author.display_name}** tarafından onurlandırıldı.\n\n📊 **Toplam Puan: {yeni_puan}**",
                 color=0x00FF00
             )
             await ctx.send(embed=embed)
@@ -325,6 +365,20 @@ async def rep_ver(ctx, hedef: discord.Member = None):
         print(f"❌ HATA: {e}")
         embed = discord.Embed(title="❌ **HATA**", description=f"Puan verilemedi: {str(e)}", color=0xFF0000)
         await ctx.send(embed=embed)
+
+# ========== PUAN GÖSTERME KOMUTU ==========
+@bot.command(name='puan', aliases=['rep'])
+async def puan_goster(ctx, hedef: discord.Member = None):
+    if not hedef:
+        hedef = ctx.author
+    
+    puan = hedef_puan_getir(hedef.id)
+    embed = discord.Embed(
+        title="📊 **İtibar Puanı**",
+        description=f"**{hedef.display_name}** toplam **{puan}** puana sahip.",
+        color=0x00FF00
+    )
+    await ctx.send(embed=embed)
 
 # ========== DİĞER KOMUTLAR ==========
 @bot.command(name='şaka', aliases=['saka'])
@@ -392,7 +446,7 @@ async def yardim(ctx):
     )
     embed.add_field(
         name="👑 **İtibar Sistemi**",
-        value="`-r @kullanıcı` - İtibar puanı verir\n• Aynı kişiye tekrar veremezsin\n• 1 saat sonra bildirim gelir",
+        value="`-r @kullanıcı` - İtibar puanı verir\n• Aynı kişiye tekrar veremezsin\n• 1 saat sonra bildirim gelir\n• `!puan @kullanıcı` - Puan sorgula",
         inline=False
     )
     embed.add_field(
@@ -400,7 +454,7 @@ async def yardim(ctx):
         value="Bana @SNOK yazarak veya 'snok' diyerek ulaşabilirsin",
         inline=False
     )
-    embed.set_footer(text="SNOK v20.0 - Tüm Özellikler Aktif | Rkiaoni tarafından yaratıldı")
+    embed.set_footer(text="SNOK v21.0 - Tüm Sorunlar Düzeltildi | Rkiaoni tarafından yaratıldı")
     await ctx.send(embed=embed)
 
 @bot.event
@@ -427,7 +481,7 @@ async def on_message(message):
     hafiza[user_id]["konusma_sayisi"] += 1
     hafiza[user_id]["konusma_tarzi"] = konusma_tarzi_analiz(message.content)
     
-    # -r komutunu manuel yakala (etiketli veya etiketsiz)
+    # -r komutunu manuel yakala
     if message.content.startswith('-r ') or message.content.startswith('-r'):
         print(f"📥 Manuel -r yakalandı: {message.content}")
         ctx = await bot.get_context(message)
@@ -491,39 +545,44 @@ async def on_message(message):
 async def bildirim_kontrol():
     await bot.wait_until_ready()
     print(f"⏰ Bildirim kontrolü başladı (1 dakikada bir kontrol)")
+    son_kontrol = int(time.time())
     while not bot.is_closed():
         try:
             simdi = int(time.time())
-            bildirimler = tum_bildirimler_getir()
-            kanal = bot.get_channel(BILDIRIM_KANAL_ID)
-            
-            for veren_id, zaman in bildirimler:
-                if simdi >= zaman:
-                    if kanal:
-                        embed = discord.Embed(
-                            title="⚡ **İtibar Defteri Açıldı** ⚡",
-                            description=f"<@{veren_id}> Bekleme süresi sona erdi. İtibar defteri yeniden açık.",
-                            color=0x00FF00
-                        )
-                        await kanal.send(embed=embed)
-                        bildirim_durumu_guncelle(veren_id)
-                        print(f"✅ Bildirim gönderildi: {veren_id}")
+            # Her 60 saniyede bir kontrol et
+            if simdi - son_kontrol >= 60:
+                bildirimler = tum_bildirimler_getir()
+                kanal = bot.get_channel(BILDIRIM_KANAL_ID)
+                
+                for veren_id, zaman in bildirimler:
+                    # Zaman kontrolü - sadece 3600 saniye geçtiyse bildirim gönder
+                    if simdi >= zaman + 3600:
+                        if kanal:
+                            embed = discord.Embed(
+                                title="⚡ **İtibar Defteri Açıldı** ⚡",
+                                description=f"<@{veren_id}> Bekleme süresi sona erdi. İtibar defteri yeniden açık.",
+                                color=0x00FF00
+                            )
+                            await kanal.send(embed=embed)
+                            bildirim_durumu_guncelle(veren_id)
+                            print(f"✅ Bildirim gönderildi: {veren_id}")
+                son_kontrol = simdi
         except Exception as e:
             print(f"❌ Bildirim hatası: {e}")
-        await asyncio.sleep(60)
+        await asyncio.sleep(30)
 
 if __name__ == "__main__":
     if not DISCORD_TOKEN:
         print("❌ Discord token eksik!")
     else:
         print("=" * 60)
-        print("🚀 SNOK v20.0 - TÜM ÖZELLİKLER AKTİF")
+        print("🚀 SNOK v21.0 - TÜM SORUNLAR DÜZELTİLDİ")
         print("=" * 60)
         print(f"👑 Yaratıcı: Rkiaoni")
-        print(f"🔹 -r komutu: Aktif (etiketli/etiketsiz)")
+        print(f"🔹 -r komutu: Aktif (etiketli)")
+        print(f"📊 !puan komutu: Puan sorgulama")
         print(f"📋 Log Kanalı: {LOG_KANAL_ID}")
         print(f"🔔 Bildirim Kanalı: {BILDIRIM_KANAL_ID}")
-        print(f"🧠 Yapay zeka: Gemini + Groq")
-        print(f"⏰ Bildirim: 1 dakikada bir kontrol")
+        print(f"⏰ Bildirim: 1 saatte bir (dakikada kontrol)")
         print("=" * 60)
         bot.run(DISCORD_TOKEN)
