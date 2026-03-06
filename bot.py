@@ -312,7 +312,7 @@ async def rep_ver(ctx, hedef: discord.Member = None):
         # YAGPDB'nin kanalına mesaj gönder (admin komutu)
         yagpdb_kanal = bot.get_channel(1475733574413062215)  # Log kanalı
         if yagpdb_kanal:
-            await yagpdb_kanal.send(f"+giverep {hedef.mention}")
+            await yagpdb_kanal.send(f"-snokrep {hedef.id}")
         
         # Başarılı olduysa KAYDET
         son_kisi_kaydet(veren_id, hedef_id, simdi)
@@ -487,3 +487,4 @@ if __name__ == "__main__":
         print(f"🔹 -r komutu: YAGPDB entegre + aynı kişi kontrolü")
         print("=" * 50)
         bot.run(DISCORD_TOKEN)
+
