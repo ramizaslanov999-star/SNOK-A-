@@ -41,30 +41,27 @@ conn = sqlite3.connect(DB_DOSYASI)
 c = conn.cursor()
 c.execute('''CREATE TABLE IF NOT EXISTS son_kisiler
              (veren_id TEXT PRIMARY KEY, 
-              hedef_id TEXT, 
               zaman INTEGER,
               bildirim_gonderildi INTEGER DEFAULT 0)''')
 conn.commit()
 conn.close()
 print("✅ Son kişi veritabanı hazır!")
 
-def son_kisi_kaydet(veren_id, hedef_id, zaman):
+def son_kisi_kaydet(veren_id, zaman):
     conn = sqlite3.connect(DB_DOSYASI)
     c = conn.cursor()
-    c.execute("REPLACE INTO son_kisiler (veren_id, hedef_id, zaman, bildirim_gonderildi) VALUES (?, ?, ?, 0)",
-              (str(veren_id), str(hedef_id), int(zaman)))
+    c.execute("REPLACE INTO son_kisiler (veren_id, zaman, bildirim_gonderildi) VALUES (?, ?, 0)",
+              (str(veren_id), int(zaman)))
     conn.commit()
     conn.close()
 
 def son_kisi_getir(veren_id):
     conn = sqlite3.connect(DB_DOSYASI)
     c = conn.cursor()
-    c.execute("SELECT hedef_id, zaman FROM son_kisiler WHERE veren_id=?", (str(veren_id),))
+    c.execute("SELECT zaman FROM son_kisiler WHERE veren_id=?", (str(veren_id),))
     sonuc = c.fetchone()
     conn.close()
-    if sonuc:
-        return {"hedef_id": int(sonuc[0]), "zaman": sonuc[1]}
-    return None
+    return sonuc[0] if sonuc else None
 
 def bildirim_durumu_guncelle(veren_id):
     conn = sqlite3.connect(DB_DOSYASI)
@@ -117,15 +114,13 @@ async def rep_ver(ctx, hedef: discord.Member = None):
     
     simdi = int(time.time())
     veren_id = ctx.author.id
-    hedef_id = hedef.id
     
-    son_kisi = son_kisi_getir(veren_id)
+    son_zaman = son_kisi_getir(veren_id)
     
     # COOLDOWN KONTROLÜ - 1 saat içinde KİMSEYE veremezsin
-    if son_kisi:
-        gecen = simdi - son_kisi["zaman"]
+    if son_zaman:
+        gecen = simdi - son_zaman
         
-        # 1 saat dolmamışsa
         if gecen < rep_cooldown:
             kalan = rep_cooldown - gecen
             dakika = kalan // 60
@@ -138,14 +133,15 @@ async def rep_ver(ctx, hedef: discord.Member = None):
             await ctx.send(embed=embed)
             return
     
-    # 1 saat geçmiş - YAGPDB'yi tetikle
+    # Cooldown geçmiş - YAGPDB'yi tetikle (MENTION olarak!)
     try:
         log_kanal = bot.get_channel(LOG_KANAL_ID)
         if log_kanal:
-            await log_kanal.send(f"-snokrep {hedef.id}")
-            print(f"✅ YAGPDB'ye iletildi: -snokrep {hedef.id}")
+            # DÜZELTME: ID yerine MENTION gönder!
+            await log_kanal.send(f"-snokrep {hedef.mention}")
+            print(f"✅ YAGPDB'ye iletildi: -snokrep {hedef.mention}")
             
-            son_kisi_kaydet(veren_id, hedef_id, simdi)
+            son_kisi_kaydet(veren_id, simdi)
             
             embed = discord.Embed(
                 title="🌟 **Onur Yükseldi** 🌟",
@@ -192,6 +188,7 @@ async def yardim(ctx):
 async def on_ready():
     print(f"✅ SNOK hazır!")
     print(f"🔹 -r komutu: Genel cooldown (1 saat)")
+    print(f"🔹 Log kanalına MENTION gönderiyor: -snokrep @kullanıcı")
     print(f"⏰ Bildirim kontrolü başlatılıyor...")
     bot.loop.create_task(bildirim_kontrol())
 
@@ -224,7 +221,7 @@ async def on_message(message):
 
 async def bildirim_kontrol():
     await bot.wait_until_ready()
-    print(f"⏰ Bildirim kontrolü başladı")
+    print(f"⏰ Bildirim kontrolü başladı (30 saniyede bir kontrol)")
     while not bot.is_closed():
         try:
             simdi = int(time.time())
@@ -242,15 +239,16 @@ async def bildirim_kontrol():
                         )
                         await kanal.send(embed=embed)
                         bildirim_durumu_guncelle(veren_id)
+                        print(f"✅ Bildirim gönderildi: {veren_id}")
         except Exception as e:
             print(f"❌ Bildirim hatası: {e}")
-        await asyncio.sleep(60)
+        await asyncio.sleep(30)
 
 if __name__ == "__main__":
     print("=" * 50)
-    print("🚀 SNOK v26.0 - GENEL COOLDOWN")
+    print("🚀 SNOK v27.0 - MENTION GÖNDEREN VERSİYON")
     print("=" * 50)
     print("🔹 -r komutu: 1 saat cooldown (kimseye veremezsin)")
-    print("🔹 YAGPDB ID hatası çözüldü")
+    print("🔹 Log kanalına: -snokrep @kullanıcı (MENTION)")
     print("=" * 50)
     bot.run(DISCORD_TOKEN)
