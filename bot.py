@@ -250,7 +250,6 @@ fıkra_listesi = [
 
 rep_cooldown = 3600
 
-# ========== -R KOMUTU - YAGPDB ENTEGRASYONLU ==========
 @bot.command(name='r', aliases=['-r'])
 async def rep_ver(ctx, hedef: discord.Member = None):
     print(f"🔥🔥🔥 -r KOMUTU ÇALIŞTI! 🔥🔥🔥")
@@ -281,7 +280,6 @@ async def rep_ver(ctx, hedef: discord.Member = None):
     
     son_kisi = son_kisi_getir(veren_id)
     
-    # AYNI KİŞİ KONTROLÜ (SADECE SNOK YAPAR)
     if son_kisi and son_kisi["hedef_id"] == hedef_id:
         gecen = simdi - son_kisi["zaman"]
         
@@ -306,19 +304,13 @@ async def rep_ver(ctx, hedef: discord.Member = None):
             return
     
     try:
-        # YAGPDB'NİN KOMUTUNU TETİKLE
         log_kanal = bot.get_channel(LOG_KANAL_ID)
         if log_kanal:
             await log_kanal.send(f"-snokrep {hedef.id}")
             print(f"✅ YAGPDB'ye iletildi: -snokrep {hedef.id}")
             
-            # SON KİŞİYİ KAYDET (SADECE SNOK YAPAR)
             son_kisi_kaydet(veren_id, hedef_id, simdi)
             
-            # YAGPDB'NİN KENDİ MESAJINI BEKLEME (2 saniye)
-            await asyncio.sleep(2)
-            
-            # BAŞARILI MESAJI (SNOK'UN ÖZEL MESAJI)
             embed = discord.Embed(
                 title="🌟 **Onur Yükseldi** 🌟",
                 description=f"Gölgeler arasından bir isim daha yükseldi…\n\n**{hedef.display_name}**, **{ctx.author.display_name}** tarafından onurlandırıldı.\n\n📊 **Puan YAGPDB tarafından kaydedildi.**",
@@ -333,7 +325,6 @@ async def rep_ver(ctx, hedef: discord.Member = None):
         embed = discord.Embed(title="❌ **HATA**", description=f"Puan verilemedi: {str(e)}", color=0xFF0000)
         await ctx.send(embed=embed)
 
-# ========== DİĞER KOMUTLAR ==========
 @bot.command(name='şaka', aliases=['saka'])
 async def saka(ctx):
     await ctx.send(f"😂 {random.choice(saka_listesi)}")
@@ -407,7 +398,7 @@ async def yardim(ctx):
         value="Bana @SNOK yazarak veya 'snok' diyerek ulaşabilirsin",
         inline=False
     )
-    embed.set_footer(text="SNOK v22.0 - YAGPDB Uyumlu | Rkiaoni tarafından yaratıldı")
+    embed.set_footer(text="SNOK v23.0 - YAGPDB Uyumlu | Rkiaoni tarafından yaratıldı")
     await ctx.send(embed=embed)
 
 @bot.event
@@ -525,7 +516,7 @@ if __name__ == "__main__":
         print("❌ Discord token eksik!")
     else:
         print("=" * 60)
-        print("🚀 SNOK v22.0 - YAGPDB UYUMLU")
+        print("🚀 SNOK v23.0 - YAGPDB UYUMLU")
         print("=" * 60)
         print(f"👑 Yaratıcı: Rkiaoni")
         print(f"🔹 -r komutu: Snok kontrol eder, YAGPDB puanı verir")
