@@ -93,7 +93,7 @@ fıkra_listesi = [
     "Temel'e sormuşlar: 'En çok neyi seversin?' Temel: 'Para!' 'Peki ondan sonra?' Temel: 'Para üstü!' 💰"
 ]
 
-rep_cooldown = 3600
+rep_cooldown = 3600  # 1 saat
 
 @bot.command(name='r', aliases=['-r'])
 async def rep_ver(ctx, hedef: discord.Member = None):
@@ -121,8 +121,8 @@ async def rep_ver(ctx, hedef: discord.Member = None):
     
     son_kisi = son_kisi_getir(veren_id)
     
-    # EĞER AYNI KİŞİYE VERMEYE ÇALIŞIYORSA - Cooldown kontrolü
-    if son_kisi and son_kisi["hedef_id"] == hedef_id:
+    # COOLDOWN KONTROLÜ - 1 saat içinde KİMSEYE veremezsin
+    if son_kisi:
         gecen = simdi - son_kisi["zaman"]
         
         # 1 saat dolmamışsa
@@ -137,17 +137,8 @@ async def rep_ver(ctx, hedef: discord.Member = None):
             )
             await ctx.send(embed=embed)
             return
-        else:
-            # 1 saat geçmiş ama aynı kişi - Yine engelle (kural bu!)
-            embed = discord.Embed(
-                title="⚔️ **Aynı Kişi** ⚔️",
-                description="Aynı kişiye tekrar itibar bırakamazsın. Gücünü başka birine aktar.",
-                color=0xFF0000
-            )
-            await ctx.send(embed=embed)
-            return
     
-    # FARKLI KİŞİ - YAGPDB'yi tetikle
+    # 1 saat geçmiş - YAGPDB'yi tetikle
     try:
         log_kanal = bot.get_channel(LOG_KANAL_ID)
         if log_kanal:
@@ -192,7 +183,7 @@ async def yardim(ctx):
     )
     embed.add_field(
         name="👑 **İtibar**",
-        value="`-r @kullanıcı` - İtibar puanı verir\n• Aynı kişiye tekrar veremezsin\n• 1 saat sonra bildirim gelir",
+        value="`-r @kullanıcı` - İtibar puanı verir\n• 1 saat cooldown (kimseye veremezsin)\n• 1 saat sonra bildirim gelir",
         inline=False
     )
     await ctx.send(embed=embed)
@@ -200,7 +191,7 @@ async def yardim(ctx):
 @bot.event
 async def on_ready():
     print(f"✅ SNOK hazır!")
-    print(f"🔹 -r komutu: Aktif")
+    print(f"🔹 -r komutu: Genel cooldown (1 saat)")
     print(f"⏰ Bildirim kontrolü başlatılıyor...")
     bot.loop.create_task(bildirim_kontrol())
 
@@ -257,9 +248,9 @@ async def bildirim_kontrol():
 
 if __name__ == "__main__":
     print("=" * 50)
-    print("🚀 SNOK v24.0 - SADELEŞTİRİLMİŞ")
+    print("🚀 SNOK v26.0 - GENEL COOLDOWN")
     print("=" * 50)
-    print("🔹 AI özelliği KAPALI")
-    print("🔹 -r komutu: Aktif (aynı kişi kontrolü)")
+    print("🔹 -r komutu: 1 saat cooldown (kimseye veremezsin)")
+    print("🔹 YAGPDB ID hatası çözüldü")
     print("=" * 50)
     bot.run(DISCORD_TOKEN)
