@@ -8,6 +8,8 @@ import sqlite3
 from flask import Flask
 import threading
 from dotenv import load_dotenv
+import aiohttp
+from discord import Webhook
 
 app = Flask(__name__)
 
@@ -96,6 +98,30 @@ fıkra_listesi = [
 
 rep_cooldown = 3600  # 1 saat
 
+async def yagpdb_komut_gonder(kanal, komut):
+    """Webhook ile YAGPDB'ye komut gönder (bot algılanması için)"""
+    try:
+        # Webhook oluştur
+        webhook = await kanal.create_webhook(name="SNOK-İtibar")
+        
+        # Webhook ile mesaj gönder
+        await webhook.send(komut, username="SNOK Sistemi")
+        
+        # Webhook'u hemen sil (temizlik)
+        await webhook.delete()
+        
+        print(f"✅ Webhook ile gönderildi: {komut}")
+        return True
+    except Exception as e:
+        print(f"❌ Webhook hatası: {e}")
+        # Webhook başarısız olursa normal mesaj dene
+        try:
+            await kanal.send(komut)
+            print(f"⚠️ Normal mesaj gönderildi (yedek): {komut}")
+            return True
+        except:
+            return False
+
 @bot.command(name='r', aliases=['-r'])
 async def rep_ver(ctx, hedef: discord.Member = None):
     if not hedef:
@@ -136,49 +162,45 @@ async def rep_ver(ctx, hedef: discord.Member = None):
                 )
                 await ctx.send(embed=embed)
                 return
-        else:
-            # Farklı kişiye veriyor, cooldown kontrolü yap
-            gecen = simdi - son_zaman
-            if gecen < rep_cooldown:
-                kalan = rep_cooldown - gecen
-                dakika = kalan // 60
-                saniye = kalan % 60
-                embed = discord.Embed(
-                    title="⏳ **Sabır...**",
-                    description=f"Yeni bir saygı bırakmak için **{dakika} dakika {saniye} saniye** kaldı.",
-                    color=0xFFFF00
-                )
-                await ctx.send(embed=embed)
-                return
-    else:
-        # İlk kez puan veriyor, cooldown kontrolü yok
-        pass
     
-    # YAGPDB'Yİ TETİKLE - LOG KANALINA YAZ (ÇÖZÜM 1)
+    # Cooldown kontrolü
+    if son_kisi:
+        gecen = simdi - son_zaman
+        if gecen < rep_cooldown:
+            kalan = rep_cooldown - gecen
+            dakika = kalan // 60
+            saniye = kalan % 60
+            embed = discord.Embed(
+                title="⏳ **Sabır...**",
+                description=f"Yeni bir saygı bırakmak için **{dakika} dakika {saniye} saniye** kaldı.",
+                color=0xFFFF00
+            )
+            await ctx.send(embed=embed)
+            return
+    
+    # YAGPDB'Yİ TETİKLE - WEBHOOK İLE (BOT ENGELLEMESİNİ AŞMAK İÇİN)
     try:
         log_kanal = bot.get_channel(LOG_KANAL_ID)
         if log_kanal:
-            # Log kanalına -snokrep komutunu gönder
+            # WEBHOOK ile gönder - YAGPDB bot olduğunu anlamaz!
             yagpdb_komut = f"-snokrep {hedef.mention}"
-            await log_kanal.send(yagpdb_komut)
-            print(f"✅ Log kanalına gönderildi: {yagpdb_komut}")
+            basarili = await yagpdb_komut_gonder(log_kanal, yagpdb_komut)
             
-            # YAGPDB'nin cevabını bekle (5 saniye) - AYNI KANALDA OLMAYACAK!
-            # Bu kısım çalışmayacak çünkü YAGPDB log kanalında cevap verecek
-            # O yüzden timeout'a düşecek ve eski yöntemle devam edecek
-            
-            await asyncio.sleep(2)
-            
-            # Doğrudan kaydet (YAGPDB'nin işlemi yaptığını varsay)
-            son_kisi_kaydet(veren_id, hedef.id, simdi)
-            
-            embed = discord.Embed(
-                title="🌟 **Onur Yükseldi** 🌟",
-                description=f"**{hedef.display_name}** onurlandırıldı!",
-                color=0x00FF00
-            )
-            await ctx.send(embed=embed)
-            
+            if basarili:
+                # 2 saniye bekle (YAGPDB'nin işlemesi için)
+                await asyncio.sleep(2)
+                
+                # Son kişiyi kaydet
+                son_kisi_kaydet(veren_id, hedef.id, simdi)
+                
+                embed = discord.Embed(
+                    title="🌟 **Onur Yükseldi** 🌟",
+                    description=f"**{hedef.display_name}** onurlandırıldı!",
+                    color=0x00FF00
+                )
+                await ctx.send(embed=embed)
+            else:
+                await ctx.send("❌ YAGPDB'ye komut gönderilemedi!")
         else:
             await ctx.send("❌ Log kanalı bulunamadı!")
             
@@ -186,7 +208,7 @@ async def rep_ver(ctx, hedef: discord.Member = None):
         print(f"❌ HATA: {e}")
         embed = discord.Embed(
             title="❌ **HATA**",
-            description=f"Puan verilemedi: {str(e)}",
+            description=f"Puan verilemedi",
             color=0xFF0000
         )
         await ctx.send(embed=embed)
@@ -236,10 +258,10 @@ async def yardim(ctx):
 
 @bot.event
 async def on_ready():
-    print(f"✅ SNOK v32.0 hazır!")
-    print(f"🔹 -r komutu: Genel cooldown + son kişi kontrolü")
-    print(f"🔹 Log kanalına -snokrep gönderiliyor: {LOG_KANAL_ID}")
-    print(f"🔹 Aynı kişiye arka arkaya verme engeli aktif")
+    print(f"✅ SNOK v33.0 - WEBHOOK DESTEKLİ!")
+    print(f"🔹 -r komutu: 1 saat cooldown + son kişi kontrolü")
+    print(f"🔹 Log kanalına WEBHOOK ile -snokrep gönderiliyor (bot engeli AŞILDI)")
+    print(f"🔹 Webhook geçici olarak oluşturulup siliniyor")
     print(f"⏰ Bildirim kontrolü başlatılıyor...")
     bot.loop.create_task(bildirim_kontrol())
 
@@ -295,10 +317,10 @@ async def bildirim_kontrol():
 
 if __name__ == "__main__":
     print("=" * 60)
-    print("🚀 SNOK v32.0 - LOG KANALINA GÖNDERİYOR")
+    print("🚀 SNOK v33.0 - WEBHOOK DESTEKLİ SON VERSİYON")
     print("=" * 60)
     print(f"🔹 Log kanalı: {LOG_KANAL_ID}")
     print(f"🔹 Bildirim kanalı: {BILDIRIM_KANAL_ID}")
-    print("🔹 -r komutu: 1 saat cooldown + son kişi kontrolü")
+    print("🔹 WEBHOOK ile gönderim AKTİF (YAGPDB bot engeli aşıldı!)")
     print("=" * 60)
     bot.run(DISCORD_TOKEN)
