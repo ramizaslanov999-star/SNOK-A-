@@ -136,7 +136,7 @@ async def rep_ver(ctx, hedef: discord.Member = None):
     if hedef.id == ctx.author.id:
         embed = discord.Embed(
             title="⚔️ **KENDİNİ ONURLANDIRAMAZSIN** ⚔️",
-            description="İtibar kazanılır, yazılmaz. Kendine puan veremezsin.",
+            description="Kendi adını kendin yüceltemezsin. Bu yerde saygı, başkalarının gözünde kazanılır.",
             color=0xFFA500
         )
         await ctx.send(embed=embed)
@@ -157,7 +157,7 @@ async def rep_ver(ctx, hedef: discord.Member = None):
             if gecen < rep_cooldown:
                 embed = discord.Embed(
                     title="⚔️ **AYNI SAVAŞÇI** ⚔️",
-                    description=f"En son <@{hedef.id}>'e itibar verdin. Önce başka birini onurlandır.",
+                    description=f"En son <@{hedef.id}>'e itibar verdin. Aynı kişiye üst üste itibar verilmez. Saygı tek bir yerde toplanmaz!",
                     color=0xFFA500
                 )
                 await ctx.send(embed=embed)
@@ -324,3 +324,4 @@ if __name__ == "__main__":
     print("🔹 WEBHOOK ile gönderim AKTİF (YAGPDB bot engeli aşıldı!)")
     print("=" * 60)
     bot.run(DISCORD_TOKEN)
+
