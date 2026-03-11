@@ -117,7 +117,7 @@ async def rep_ver(ctx, hedef: discord.Member = None):
     
     son_zaman = son_kisi_getir(veren_id)
     
-    # COOLDOWN KONTROLÜ - 1 saat içinde KİMSEYE veremezsin
+    # COOLDOWN KONTROLÜ
     if son_zaman:
         gecen = simdi - son_zaman
         if gecen < rep_cooldown:
@@ -132,19 +132,22 @@ async def rep_ver(ctx, hedef: discord.Member = None):
             await ctx.send(embed=embed)
             return
     
-    # Cooldown geçmiş - YAGPDB'yi tetikle
+    # YAGPDB'yi tetikle - BİR SN BEKLE (cache'in güncellenmesi için)
     try:
         log_kanal = bot.get_channel(LOG_KANAL_ID)
         if log_kanal:
             await log_kanal.send(f"-snokrep {hedef.mention}")
             print(f"✅ YAGPDB'ye iletildi: -snokrep {hedef.mention}")
             
+            # ÖNEMLİ: YAGPDB'nin mention'ı cache'lemesi için 1 saniye bekle
+            await asyncio.sleep(1)
+            
             son_kisi_kaydet(veren_id, simdi)
             
-            # Başarılı mesajı (toplam puan YAGPDB'den gelecek, şimdilik mention gösteriyoruz)
+            # Başarılı mesajı (toplam puan YAGPDB'den custom command ile gelecek)
             embed = discord.Embed(
                 title="🌟 **Onur Yükseldi** 🌟",
-                description=f"Gölgeler arasından bir isim daha yükseldi…\n\n**{hedef.display_name}**, **{ctx.author.display_name}** tarafından onurlandırıldı.\n\n📊 **Puan bilgisi yakında...**",
+                description=f"Gölgeler arasından bir isim daha yükseldi…\n\n**{hedef.display_name}**, **{ctx.author.display_name}** tarafından onurlandırıldı.",
                 color=0x00FF00
             )
             await ctx.send(embed=embed)
@@ -178,7 +181,7 @@ async def yardim(ctx):
     )
     embed.add_field(
         name="👑 **İtibar**",
-        value="`-r @kullanıcı` - İtibar puanı verir\n• 1 saat cooldown (kimseye veremezsin)\n• 1 saat sonra bildirim gelir",
+        value="`-r @kullanıcı` - İtibar puanı verir\n• 1 saat cooldown\n• 1 saat sonra bildirim gelir",
         inline=False
     )
     await ctx.send(embed=embed)
@@ -187,7 +190,7 @@ async def yardim(ctx):
 async def on_ready():
     print(f"✅ SNOK hazır!")
     print(f"🔹 -r komutu: Genel cooldown (1 saat)")
-    print(f"🔹 Log kanalına mention gönderiyor")
+    print(f"🔹 Log kanalına mention gönderiyor + 1sn gecikme")
     print(f"⏰ Bildirim kontrolü başlatılıyor...")
     bot.loop.create_task(bildirim_kontrol())
 
@@ -211,7 +214,6 @@ async def on_message(message):
             await message.channel.send(embed=embed)
         return
     
-    # "Beni niye selamlamadın?" sorusu
     if "selamlamadın" in message.content.lower() and "niye" in message.content.lower():
         await message.reply("😅 Aa fark etmemişim, kusura bakma! Şimdi sana kocaman bir merhaba! 👋😊")
         return
@@ -228,7 +230,6 @@ async def bildirim_kontrol():
             kanal = bot.get_channel(BILDIRIM_KANAL_ID)
             
             for veren_id, zaman in bildirimler:
-                # SADECE 3600 saniye geçtiyse bildirim gönder
                 if simdi >= zaman + 3600:
                     if kanal:
                         embed = discord.Embed(
@@ -245,10 +246,10 @@ async def bildirim_kontrol():
 
 if __name__ == "__main__":
     print("=" * 50)
-    print("🚀 SNOK v28.0 - TOPLAM PUAN GÖSTEREN")
+    print("🚀 SNOK v29.0 - YAGPDB UYUMLU (1sn gecikmeli)")
     print("=" * 50)
-    print("🔹 -r komutu: 1 saat cooldown (kimseye veremezsin)")
-    print("🔹 Log kanalına: -snokrep @kullanıcı (mention)")
-    print("🔹 YAGPDB Custom Command: Toplam puan gösterir")
+    print("🔹 -r komutu: 1 saat cooldown")
+    print("🔹 Log kanalına: -snokrep @kullanıcı + 1sn bekleme")
+    print("🔹 YAGPDB Custom Command: Gelişmiş ID çözümleme")
     print("=" * 50)
     bot.run(DISCORD_TOKEN)
