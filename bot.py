@@ -9,7 +9,6 @@ from flask import Flask
 import threading
 from dotenv import load_dotenv
 import aiohttp
-from discord import Webhook, AsyncWebhookAdapter
 
 app = Flask(__name__)
 
@@ -39,6 +38,7 @@ BILDIRIM_KANAL_ID = 1473947547365019812
 
 DB_DOSYASI = "son_kisi.db"
 
+# Veritabanını oluştur
 conn = sqlite3.connect(DB_DOSYASI)
 c = conn.cursor()
 c.execute('''CREATE TABLE IF NOT EXISTS son_kisiler
@@ -51,35 +51,52 @@ conn.close()
 print("✅ Son kişi veritabanı hazır!")
 
 def son_kisi_kaydet(veren_id, hedef_id, zaman):
-    conn = sqlite3.connect(DB_DOSYASI)
-    c = conn.cursor()
-    c.execute("REPLACE INTO son_kisiler (veren_id, hedef_id, zaman, bildirim_gonderildi) VALUES (?, ?, ?, 0)",
-              (str(veren_id), str(hedef_id), int(zaman)))
-    conn.commit()
-    conn.close()
+    try:
+        conn = sqlite3.connect(DB_DOSYASI)
+        c = conn.cursor()
+        c.execute("REPLACE INTO son_kisiler (veren_id, hedef_id, zaman, bildirim_gonderildi) VALUES (?, ?, ?, 0)",
+                  (str(veren_id), str(hedef_id), int(zaman)))
+        conn.commit()
+        conn.close()
+        print(f"✅ Kayıt: {veren_id} → {hedef_id} @ {zaman}")
+        return True
+    except Exception as e:
+        print(f"❌ Veritabanı hatası: {e}")
+        return False
 
 def son_kisi_getir(veren_id):
-    conn = sqlite3.connect(DB_DOSYASI)
-    c = conn.cursor()
-    c.execute("SELECT hedef_id, zaman FROM son_kisiler WHERE veren_id=?", (str(veren_id),))
-    sonuc = c.fetchone()
-    conn.close()
-    return sonuc if sonuc else None
+    try:
+        conn = sqlite3.connect(DB_DOSYASI)
+        c = conn.cursor()
+        c.execute("SELECT hedef_id, zaman FROM son_kisiler WHERE veren_id=?", (str(veren_id),))
+        sonuc = c.fetchone()
+        conn.close()
+        return sonuc if sonuc else None
+    except Exception as e:
+        print(f"❌ Veritabanı okuma hatası: {e}")
+        return None
 
 def bildirim_durumu_guncelle(veren_id):
-    conn = sqlite3.connect(DB_DOSYASI)
-    c = conn.cursor()
-    c.execute("UPDATE son_kisiler SET bildirim_gonderildi=1 WHERE veren_id=?", (str(veren_id),))
-    conn.commit()
-    conn.close()
+    try:
+        conn = sqlite3.connect(DB_DOSYASI)
+        c = conn.cursor()
+        c.execute("UPDATE son_kisiler SET bildirim_gonderildi=1 WHERE veren_id=?", (str(veren_id),))
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"❌ Bildirim güncelleme hatası: {e}")
 
 def tum_bildirimler_getir():
-    conn = sqlite3.connect(DB_DOSYASI)
-    c = conn.cursor()
-    c.execute("SELECT veren_id, zaman FROM son_kisiler WHERE bildirim_gonderildi=0")
-    sonuclar = c.fetchall()
-    conn.close()
-    return sonuclar
+    try:
+        conn = sqlite3.connect(DB_DOSYASI)
+        c = conn.cursor()
+        c.execute("SELECT veren_id, zaman FROM son_kisiler WHERE bildirim_gonderildi=0")
+        sonuclar = c.fetchall()
+        conn.close()
+        return sonuclar
+    except Exception as e:
+        print(f"❌ Bildirim listesi hatası: {e}")
+        return []
 
 saka_listesi = [
     "Bir gün bilgisayar fareye sormuş: 'Benimle oynar mısın?' Fare: 'Tabii ama önce şu kablolarını topla!' 🖱️",
@@ -96,32 +113,25 @@ fıkra_listesi = [
 rep_cooldown = 3600  # 1 saat
 
 async def webhook_komut_gonder(kanal, komut):
-    """Webhook ile YAGPDB'ye komut gönder (BOT ENGELLEMESİNİ AŞMAK İÇİN)"""
+    """Webhook ile YAGPDB'ye komut gönder"""
     try:
         # Webhook oluştur
         webhook = await kanal.create_webhook(name="SNOK-İtibar")
         
-        # Webhook ile mesaj gönder - bot değil, webhook olarak görünür!
+        # Webhook ile mesaj gönder
         await webhook.send(
             komut,
-            username="SNOK Sistemi",
-            avatar_url="https://i.imgur.com/placeholder.png"  # İsteğe bağlı avatar
+            username="SNOK Sistemi"
         )
         
-        # Webhook'u hemen sil (temizlik)
+        # Webhook'u hemen sil
         await webhook.delete()
         
         print(f"✅ Webhook ile gönderildi: {komut}")
         return True
     except Exception as e:
         print(f"❌ Webhook hatası: {e}")
-        # Webhook başarısız olursa normal mesaj dene (belki çalışır)
-        try:
-            await kanal.send(komut)
-            print(f"⚠️ Normal mesaj gönderildi (yedek): {komut}")
-            return True
-        except:
-            return False
+        return False
 
 @bot.command(name='r', aliases=['-r'])
 async def rep_ver(ctx, hedef: discord.Member = None):
@@ -163,9 +173,8 @@ async def rep_ver(ctx, hedef: discord.Member = None):
                 )
                 await ctx.send(embed=embed)
                 return
-    
-    # Cooldown kontrolü
-    if son_kisi:
+        
+        # Cooldown kontrolü
         gecen = simdi - son_zaman
         if gecen < rep_cooldown:
             kalan = rep_cooldown - gecen
@@ -179,11 +188,11 @@ async def rep_ver(ctx, hedef: discord.Member = None):
             await ctx.send(embed=embed)
             return
     
-    # YAGPDB'Yİ TETİKLE - WEBHOOK İLE (BOT ENGELLEMESİNİ AŞ)
+    # YAGPDB'Yİ TETİKLE - WEBHOOK İLE
     try:
         log_kanal = bot.get_channel(LOG_KANAL_ID)
         if log_kanal:
-            # WEBHOOK ile gönder - YAGPDB bot olduğunu anlamaz!
+            # WEBHOOK ile gönder
             yagpdb_komut = f"-snokrep {hedef.mention}"
             basarili = await webhook_komut_gonder(log_kanal, yagpdb_komut)
             
@@ -209,7 +218,7 @@ async def rep_ver(ctx, hedef: discord.Member = None):
         print(f"❌ HATA: {e}")
         embed = discord.Embed(
             title="❌ **HATA**",
-            description=f"Puan verilemedi",
+            description="Puan verilemedi",
             color=0xFF0000
         )
         await ctx.send(embed=embed)
@@ -258,11 +267,9 @@ async def yardim(ctx):
 
 @bot.event
 async def on_ready():
-    print(f"✅ SNOK v35.0 - WEBHOOK İLE KESİN ÇÖZÜM!")
+    print(f"✅ SNOK v35.0 hazır!")
     print(f"🔹 -r komutu: 1 saat cooldown + son kişi kontrolü")
-    print(f"🔹 Log kanalına WEBHOOK ile -snokrep gönderiliyor")
-    print(f"🔹 Webhook'lar bot değildir, YAGPDB algılayacak!")
-    print(f"⏰ Bildirim kontrolü başlatılıyor...")
+    print(f"🔹 Log kanalına WEBHOOK ile gönderiliyor")
     bot.loop.create_task(bildirim_kontrol())
 
 @bot.event
@@ -285,15 +292,11 @@ async def on_message(message):
             await message.channel.send(embed=embed)
         return
     
-    if "selamlamadın" in message.content.lower() and "niye" in message.content.lower():
-        await message.reply("😅 Aa fark etmemişim, kusura bakma! Şimdi sana kocaman bir merhaba! 👋😊")
-        return
-    
     await bot.process_commands(message)
 
 async def bildirim_kontrol():
     await bot.wait_until_ready()
-    print(f"⏰ Bildirim kontrolü başladı (30 saniyede bir kontrol)")
+    print(f"⏰ Bildirim kontrolü başladı")
     while not bot.is_closed():
         try:
             simdi = int(time.time())
@@ -317,11 +320,9 @@ async def bildirim_kontrol():
 
 if __name__ == "__main__":
     print("=" * 60)
-    print("🚀 SNOK v35.0 - WEBHOOK İLE KESİN ÇÖZÜM")
+    print("🚀 SNOK v35.0 BAŞLATILIYOR")
     print("=" * 60)
     print(f"🔹 Log kanalı: {LOG_KANAL_ID}")
     print(f"🔹 Bildirim kanalı: {BILDIRIM_KANAL_ID}")
-    print("🔹 WEBHOOK ile gönderim AKTİF (YAGPDB bot engeli AŞILDI!)")
-    print("🔹 YAGPDB artık SNOK'u algılayacak!")
     print("=" * 60)
     bot.run(DISCORD_TOKEN)
