@@ -120,7 +120,6 @@ async def rep_ver(ctx, hedef: discord.Member = None):
     # COOLDOWN KONTROLÜ - 1 saat içinde KİMSEYE veremezsin
     if son_zaman:
         gecen = simdi - son_zaman
-        
         if gecen < rep_cooldown:
             kalan = rep_cooldown - gecen
             dakika = kalan // 60
@@ -133,19 +132,19 @@ async def rep_ver(ctx, hedef: discord.Member = None):
             await ctx.send(embed=embed)
             return
     
-    # Cooldown geçmiş - YAGPDB'yi tetikle (MENTION olarak!)
+    # Cooldown geçmiş - YAGPDB'yi tetikle
     try:
         log_kanal = bot.get_channel(LOG_KANAL_ID)
         if log_kanal:
-            # DÜZELTME: ID yerine MENTION gönder!
             await log_kanal.send(f"-snokrep {hedef.mention}")
             print(f"✅ YAGPDB'ye iletildi: -snokrep {hedef.mention}")
             
             son_kisi_kaydet(veren_id, simdi)
             
+            # Başarılı mesajı (toplam puan YAGPDB'den gelecek, şimdilik mention gösteriyoruz)
             embed = discord.Embed(
                 title="🌟 **Onur Yükseldi** 🌟",
-                description=f"Gölgeler arasından bir isim daha yükseldi…\n\n**{hedef.display_name}**, **{ctx.author.display_name}** tarafından onurlandırıldı.",
+                description=f"Gölgeler arasından bir isim daha yükseldi…\n\n**{hedef.display_name}**, **{ctx.author.display_name}** tarafından onurlandırıldı.\n\n📊 **Puan bilgisi yakında...**",
                 color=0x00FF00
             )
             await ctx.send(embed=embed)
@@ -188,7 +187,7 @@ async def yardim(ctx):
 async def on_ready():
     print(f"✅ SNOK hazır!")
     print(f"🔹 -r komutu: Genel cooldown (1 saat)")
-    print(f"🔹 Log kanalına MENTION gönderiyor: -snokrep @kullanıcı")
+    print(f"🔹 Log kanalına mention gönderiyor")
     print(f"⏰ Bildirim kontrolü başlatılıyor...")
     bot.loop.create_task(bildirim_kontrol())
 
@@ -246,9 +245,10 @@ async def bildirim_kontrol():
 
 if __name__ == "__main__":
     print("=" * 50)
-    print("🚀 SNOK v27.0 - MENTION GÖNDEREN VERSİYON")
+    print("🚀 SNOK v28.0 - TOPLAM PUAN GÖSTEREN")
     print("=" * 50)
     print("🔹 -r komutu: 1 saat cooldown (kimseye veremezsin)")
-    print("🔹 Log kanalına: -snokrep @kullanıcı (MENTION)")
+    print("🔹 Log kanalına: -snokrep @kullanıcı (mention)")
+    print("🔹 YAGPDB Custom Command: Toplam puan gösterir")
     print("=" * 50)
     bot.run(DISCORD_TOKEN)
