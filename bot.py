@@ -34,34 +34,37 @@ bot = commands.Bot(command_prefix='!', intents=intents, help_command=None)
 ABI_ID = 423889250052734986
 LOG_KANAL_ID = 1475733574413062215
 BILDIRIM_KANAL_ID = 1473947547365019812
+YAGPDB_ID = 204255221017214977  # YAGPDB'nin ID'si
 
 DB_DOSYASI = "son_kisi.db"
 
+# Veritabanını güncelle - hedef_id sütunu ekle
 conn = sqlite3.connect(DB_DOSYASI)
 c = conn.cursor()
 c.execute('''CREATE TABLE IF NOT EXISTS son_kisiler
              (veren_id TEXT PRIMARY KEY, 
+              hedef_id TEXT,
               zaman INTEGER,
               bildirim_gonderildi INTEGER DEFAULT 0)''')
 conn.commit()
 conn.close()
 print("✅ Son kişi veritabanı hazır!")
 
-def son_kisi_kaydet(veren_id, zaman):
+def son_kisi_kaydet(veren_id, hedef_id, zaman):
     conn = sqlite3.connect(DB_DOSYASI)
     c = conn.cursor()
-    c.execute("REPLACE INTO son_kisiler (veren_id, zaman, bildirim_gonderildi) VALUES (?, ?, 0)",
-              (str(veren_id), int(zaman)))
+    c.execute("REPLACE INTO son_kisiler (veren_id, hedef_id, zaman, bildirim_gonderildi) VALUES (?, ?, ?, 0)",
+              (str(veren_id), str(hedef_id), int(zaman)))
     conn.commit()
     conn.close()
 
 def son_kisi_getir(veren_id):
     conn = sqlite3.connect(DB_DOSYASI)
     c = conn.cursor()
-    c.execute("SELECT zaman FROM son_kisiler WHERE veren_id=?", (str(veren_id),))
+    c.execute("SELECT hedef_id, zaman FROM son_kisiler WHERE veren_id=?", (str(veren_id),))
     sonuc = c.fetchone()
     conn.close()
-    return sonuc[0] if sonuc else None
+    return sonuc if sonuc else None
 
 def bildirim_durumu_guncelle(veren_id):
     conn = sqlite3.connect(DB_DOSYASI)
@@ -115,11 +118,29 @@ async def rep_ver(ctx, hedef: discord.Member = None):
     simdi = int(time.time())
     veren_id = ctx.author.id
     
-    son_zaman = son_kisi_getir(veren_id)
+    # SON KİŞİ KONTROLÜ (arka arkaya aynı kişiye verme engeli)
+    son_kisi = son_kisi_getir(veren_id)
+    if son_kisi:
+        son_hedef_id = int(son_kisi[0])
+        son_zaman = son_kisi[1]
+        
+        # Eğer aynı kişiye vermeye çalışıyorsa
+        if son_hedef_id == hedef.id:
+            gecen = simdi - son_zaman
+            if gecen < rep_cooldown:
+                # Cooldown içinde aynı kişi
+                embed = discord.Embed(
+                    title="⚔️ **AYNI SAVAŞÇI** ⚔️",
+                    description=f"En son <@{hedef.id}>'e itibar verdin. Önce başka birini onurlandır.",
+                    color=0xFFA500
+                )
+                await ctx.send(embed=embed)
+                return
+            # Cooldown bitmiş ama aynı kişi - buna izin ver (cooldown bittiyse herkese açık)
     
-    # COOLDOWN KONTROLÜ
-    if son_zaman:
-        gecen = simdi - son_zaman
+    # COOLDOWN KONTROLÜ (genel)
+    if son_kisi:
+        gecen = simdi - son_kisi[1]
         if gecen < rep_cooldown:
             kalan = rep_cooldown - gecen
             dakika = kalan // 60
@@ -132,31 +153,99 @@ async def rep_ver(ctx, hedef: discord.Member = None):
             await ctx.send(embed=embed)
             return
     
-    # YAGPDB'yi tetikle - BİR SN BEKLE (cache'in güncellenmesi için)
+    # YAGPDB custom command'ini çağır ve CEVAP BEKLE
     try:
-        log_kanal = bot.get_channel(LOG_KANAL_ID)
-        if log_kanal:
-            await log_kanal.send(f"-snokrep {hedef.mention}")
-            print(f"✅ YAGPDB'ye iletildi: -snokrep {hedef.mention}")
+        # YAGPDB custom command'ini gönder
+        yagpdb_komut = f"+snokrep {hedef.mention}"
+        await ctx.send(yagpdb_komut)
+        
+        # YAGPDB'nin cevabını bekle (max 3 saniye)
+        def check(msg):
+            return msg.author.id == YAGPDB_ID and msg.channel.id == ctx.channel.id
+        
+        try:
+            yagpdb_cevap = await bot.wait_for('message', timeout=3.0, check=check)
+            cevap_icerik = yagpdb_cevap.content
             
-            # ÖNEMLİ: YAGPDB'nin mention'ı cache'lemesi için 1 saniye bekle
-            await asyncio.sleep(1)
+            if cevap_icerik.startswith("✅ BASARILI"):
+                # BAŞARILI! ŞİMDİ SON KİŞİYİ KAYDET
+                parcalar = cevap_icerik.split('|')
+                hedef_id = int(parcalar[1])
+                toplam_puan = parcalar[2]
+                zaman = int(parcalar[3])
+                
+                # Son kişiyi kaydet
+                son_kisi_kaydet(veren_id, hedef_id, zaman)
+                
+                embed = discord.Embed(
+                    title="🌟 **Onur Yükseldi** 🌟",
+                    description=f"**{hedef.display_name}** onurlandırıldı! (Toplam: {toplam_puan} puan)",
+                    color=0x00FF00
+                )
+                await ctx.send(embed=embed)
+                
+            elif cevap_icerik.startswith("⏳ COOLDOWN"):
+                # Cooldown'da
+                parcalar = cevap_icerik.split('|')
+                gecen_sure = int(parcalar[1])
+                kalan = 3600 - gecen_sure
+                dakika = kalan // 60
+                saniye = kalan % 60
+                
+                embed = discord.Embed(
+                    title="⏳ **Sabır...**",
+                    description=f"YAGPDB cooldown'da olduğunu söylüyor. **{dakika} dakika {saniye} saniye** kaldı.",
+                    color=0xFFFF00
+                )
+                await ctx.send(embed=embed)
+                
+            elif cevap_icerik.startswith("❌ HATA"):
+                # Hata mesajı
+                hata = cevap_icerik.replace("❌ HATA|", "")
+                embed = discord.Embed(
+                    title="❌ **HATA**",
+                    description=f"İşlem başarısız: {hata}",
+                    color=0xFF0000
+                )
+                await ctx.send(embed=embed)
+                
+            else:
+                # Bilinmeyen cevap
+                embed = discord.Embed(
+                    title="❌ **HATA**",
+                    description=f"YAGPDB'den beklenmeyen cevap: {cevap_icerik}",
+                    color=0xFF0000
+                )
+                await ctx.send(embed=embed)
+                
+        except asyncio.TimeoutError:
+            # YAGPDB cevap vermedi - eski yöntemle devam et
+            print(f"⚠️ YAGPDB cevap vermedi, eski yöntemle devam ediliyor")
             
-            son_kisi_kaydet(veren_id, simdi)
-            
-            # Başarılı mesajı (toplam puan YAGPDB'den custom command ile gelecek)
-            embed = discord.Embed(
-                title="🌟 **Onur Yükseldi** 🌟",
-                description=f"Gölgeler arasından bir isim daha yükseldi…\n\n**{hedef.display_name}**, **{ctx.author.display_name}** tarafından onurlandırıldı.",
-                color=0x00FF00
-            )
-            await ctx.send(embed=embed)
-        else:
-            await ctx.send("❌ Log kanalı bulunamadı!")
+            # Log kanalına gönder (eski yöntem yedek)
+            log_kanal = bot.get_channel(LOG_KANAL_ID)
+            if log_kanal:
+                await log_kanal.send(f"-snokrep {hedef.mention}")
+                await asyncio.sleep(1)
+                
+                son_kisi_kaydet(veren_id, hedef.id, simdi)
+                
+                embed = discord.Embed(
+                    title="🌟 **Onur Yükseldi** 🌟",
+                    description=f"**{hedef.display_name}**, **{ctx.author.display_name}** tarafından onurlandırıldı.",
+                    color=0x00FF00
+                )
+                await ctx.send(embed=embed)
+            else:
+                await ctx.send("❌ Log kanalı bulunamadı!")
             
     except Exception as e:
         print(f"❌ HATA: {e}")
-        embed = discord.Embed(title="❌ **HATA**", description=f"Puan verilemedi: {str(e)}", color=0xFF0000)
+        embed = discord.Embed(
+            title="❌ **HATA**",
+            description=f"Puan verilemedi: {str(e)}",
+            color=0xFF0000
+        )
         await ctx.send(embed=embed)
 
 @bot.command(name='şaka', aliases=['saka'])
@@ -169,6 +258,8 @@ async def fikra(ctx):
 
 @bot.command(name='yardım', aliases=['yrd', 'help'])
 async def yardim(ctx):
+    is_abi = (ctx.author.id == ABI_ID)
+    
     embed = discord.Embed(
         title="🌸 **SNOK - İtibar Asistanı** 🌸",
         description="Merhaba! Ben SNOK, itibar sistemini yöneten basit bir botum.",
@@ -180,17 +271,32 @@ async def yardim(ctx):
         inline=False
     )
     embed.add_field(
-        name="👑 **İtibar**",
-        value="`-r @kullanıcı` - İtibar puanı verir\n• 1 saat cooldown\n• 1 saat sonra bildirim gelir",
+        name="👑 **İtibar Sistemi**",
+        value=(
+            "`-r @kullanıcı` - İtibar puanı verir\n"
+            "• 1 saat cooldown\n"
+            "• Aynı kişiye arka arkaya veremezsin\n"
+            "• Önce başkasına vermelisin\n"
+            "• 1 saat sonra bildirim gelir"
+        ),
         inline=False
     )
+    
+    if is_abi:
+        embed.add_field(
+            name="👑 **Abi Özel**",
+            value="Hoş geldin abi! Sistem aktif.",
+            inline=False
+        )
+    
     await ctx.send(embed=embed)
 
 @bot.event
 async def on_ready():
-    print(f"✅ SNOK hazır!")
-    print(f"🔹 -r komutu: Genel cooldown (1 saat)")
-    print(f"🔹 Log kanalına mention gönderiyor + 1sn gecikme")
+    print(f"✅ SNOK v30.0 hazır!")
+    print(f"🔹 -r komutu: Genel cooldown + son kişi kontrolü")
+    print(f"🔹 YAGPDB ile direkt iletişim (3sn timeout)")
+    print(f"🔹 Eski log kanalı yöntemi yedek olarak duruyor")
     print(f"⏰ Bildirim kontrolü başlatılıyor...")
     bot.loop.create_task(bildirim_kontrol())
 
@@ -234,7 +340,7 @@ async def bildirim_kontrol():
                     if kanal:
                         embed = discord.Embed(
                             title="⚡ **İtibar Defteri Açıldı** ⚡",
-                            description=f"<@{veren_id}> Bekleme süresi sona erdi. İtibar defteri yeniden açık.",
+                            description=f"<@{veren_id}> Bekleme süresi sona erdi. Artık yeni birini onurlandırabilirsin!",
                             color=0x00FF00
                         )
                         await kanal.send(embed=embed)
@@ -245,11 +351,12 @@ async def bildirim_kontrol():
         await asyncio.sleep(30)
 
 if __name__ == "__main__":
-    print("=" * 50)
-    print("🚀 SNOK v29.0 - YAGPDB UYUMLU (1sn gecikmeli)")
-    print("=" * 50)
-    print("🔹 -r komutu: 1 saat cooldown")
-    print("🔹 Log kanalına: -snokrep @kullanıcı + 1sn bekleme")
-    print("🔹 YAGPDB Custom Command: Gelişmiş ID çözümleme")
-    print("=" * 50)
+    print("=" * 60)
+    print("🚀 SNOK v30.0 - SON VERSİYON (YAGPDB ile EL SIKIŞMALI)")
+    print("=" * 60)
+    print("🔹 -r komutu: 1 saat cooldown + son kişi kontrolü")
+    print("🔹 YAGPDB ile direkt iletişim: +snokrep @kullanıcı (3sn timeout)")
+    print("🔹 Aynı kişiye arka arkaya verme engeli aktif")
+    print("🔹 Bildirim sistemi: 1 saat sonra kanala mesaj")
+    print("=" * 60)
     bot.run(DISCORD_TOKEN)
