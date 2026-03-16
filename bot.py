@@ -1,7 +1,6 @@
 import os
 import re
 import json
-import math
 import random
 import sqlite3
 import asyncio
@@ -25,6 +24,7 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 SYNC_GUILD_ID = os.getenv("SYNC_GUILD_ID")
 WARN_LOG_CHANNEL_ID = int(os.getenv("WARN_LOG_CHANNEL_ID", "1471826660025176297"))
+LEVEL_LOG_CHANNEL_ID = int(os.getenv("LEVEL_LOG_CHANNEL_ID", "1471137929886695547"))
 OWNER_NAME = os.getenv("OWNER_NAME", "Sunucu Sahibi")
 DB_PATH = os.getenv("DB_PATH", "saki_memory.db")
 
@@ -79,6 +79,22 @@ SHORT_QA = {
 def now_utc() -> datetime:
     return datetime.now(timezone.utc)
 
+def sanitize_text(text: str) -> str:
+    return re.sub(r"\s+", " ", text).strip()
+
+def normalize_content(text: str) -> str:
+    return sanitize_text(text.lower())
+
+def contains_bad_word(text: str) -> bool:
+    normalized = normalize_content(text)
+    for bad in DEFAULT_BAD_WORDS:
+        if bad in normalized:
+            return True
+    return False
+
+def format_dt(dt: datetime) -> str:
+    return dt.astimezone().strftime("%Y-%m-%d %H:%M")
+
 def parse_duration(duration: str) -> Optional[timedelta]:
     """
     Örnek:
@@ -112,22 +128,6 @@ def compute_text_level(text_xp: int) -> int:
 
 def compute_voice_level(voice_minutes: int) -> int:
     return max(1, voice_minutes // 60 + 1)
-
-def sanitize_text(text: str) -> str:
-    return re.sub(r"\s+", " ", text).strip()
-
-def normalize_content(text: str) -> str:
-    return sanitize_text(text.lower())
-
-def contains_bad_word(text: str) -> bool:
-    normalized = normalize_content(text)
-    for bad in DEFAULT_BAD_WORDS:
-        if bad in normalized:
-            return True
-    return False
-
-def format_dt(dt: datetime) -> str:
-    return dt.astimezone().strftime("%Y-%m-%d %H:%M")
 
 # =========================================================
 # DATABASE
@@ -313,21 +313,34 @@ def add_voice_minutes(user_id: int, username: str, minutes: int):
     conn.commit()
     conn.close()
 
-def set_levels(user_id: int, username: str, text_level: int, voice_level: int):
+def set_levels(user_id: int, username: str, text_level: Optional[int] = None, voice_level: Optional[int] = None):
     ensure_profile(user_id, username)
     conn = db_connect()
     cur = conn.cursor()
 
-    text_xp = max(0, (text_level - 1) * 25)
-    voice_minutes = max(0, (voice_level - 1) * 60)
+    cur.execute("""
+        SELECT text_level, voice_level, text_xp, voice_minutes
+        FROM profiles
+        WHERE user_id = ?
+    """, (str(user_id),))
+    row = cur.fetchone()
+
+    current_text_level = row["text_level"] if row else 1
+    current_voice_level = row["voice_level"] if row else 1
+
+    new_text_level = max(1, text_level if text_level is not None else current_text_level)
+    new_voice_level = max(1, voice_level if voice_level is not None else current_voice_level)
+
+    text_xp = max(0, (new_text_level - 1) * 25)
+    voice_minutes = max(0, (new_voice_level - 1) * 60)
 
     cur.execute("""
         UPDATE profiles
         SET text_xp = ?, text_level = ?, voice_minutes = ?, voice_level = ?, username = ?, updated_at = ?
         WHERE user_id = ?
     """, (
-        text_xp, text_level, voice_minutes, voice_level, username,
-        now_utc().isoformat(), str(user_id)
+        text_xp, new_text_level, voice_minutes, new_voice_level,
+        username, now_utc().isoformat(), str(user_id)
     ))
     conn.commit()
     conn.close()
@@ -535,6 +548,95 @@ def recent_context_to_text(channel_id: int) -> str:
     return "\n".join([f"{r['username']}: {r['content']}" for r in rows])
 
 # =========================================================
+# LEVEL LOG PARSER
+# =========================================================
+def extract_text_from_message_and_embeds(message: discord.Message) -> str:
+    parts = []
+    if message.content:
+        parts.append(message.content)
+
+    for embed in message.embeds:
+        if embed.title:
+            parts.append(embed.title)
+        if embed.description:
+            parts.append(embed.description)
+        for field in embed.fields:
+            parts.append(field.name or "")
+            parts.append(field.value or "")
+
+    return "\n".join(parts)
+
+def parse_level_update(message: discord.Message) -> Optional[dict]:
+    """
+    Level bot mesajlarından şunları çekmeye çalışır:
+    - kullanıcı id
+    - text level
+    - voice level
+
+    Desteklenen kaba örnekler:
+    @uye text level 5 oldu
+    @uye sohbet seviyesi 7
+    @uye voice level 3
+    @uye sesli seviyesi 4
+    """
+    raw = extract_text_from_message_and_embeds(message)
+    if not raw.strip():
+        return None
+
+    user_id = None
+    if message.mentions:
+        user_id = message.mentions[0].id
+    else:
+        m_user = re.search(r"<@!?(\d+)>", raw)
+        if m_user:
+            user_id = int(m_user.group(1))
+
+    if not user_id:
+        return None
+
+    text_level = None
+    voice_level = None
+
+    raw_low = raw.lower()
+
+    text_patterns = [
+        r"(?:text|mesaj|yazı|yazi|sohbet|chat)\s*(?:seviyesi|seviye|level|lvl)?\s*(\d+)",
+        r"(\d+)\s*(?:text|mesaj|yazı|yazi|sohbet|chat)\s*(?:seviyesi|seviye|level|lvl)",
+    ]
+    voice_patterns = [
+        r"(?:voice|sesli|səsli)\s*(?:seviyesi|seviye|level|lvl)?\s*(\d+)",
+        r"(\d+)\s*(?:voice|sesli|səsli)\s*(?:seviyesi|seviye|level|lvl)",
+    ]
+
+    for pat in text_patterns:
+        m = re.search(pat, raw_low)
+        if m:
+            text_level = int(m.group(1))
+            break
+
+    for pat in voice_patterns:
+        m = re.search(pat, raw_low)
+        if m:
+            voice_level = int(m.group(1))
+            break
+
+    # Eğer hiç ayrım bulamadıysa ama seviye/level geçtiyse tek sayıyı text say
+    if text_level is None and voice_level is None:
+        if any(k in raw_low for k in ["seviye", "seviyesi", "level", "lvl"]):
+            m_num = re.search(r"\b(\d{1,3})\b", raw_low)
+            if m_num:
+                text_level = int(m_num.group(1))
+
+    if text_level is None and voice_level is None:
+        return None
+
+    return {
+        "user_id": user_id,
+        "text_level": text_level,
+        "voice_level": voice_level
+    }
+
+# =========================================================
 # AI
 # =========================================================
 def cleanup_ai_response(text: str, username: str) -> str:
@@ -575,11 +677,9 @@ def cleanup_ai_response(text: str, username: str) -> str:
 
     result = sanitize_text(result)
 
-    # Fazla uzun olmasın
-    if len(result) > 260:
-        result = result[:260].rsplit(" ", 1)[0]
+    if len(result) > 220:
+        result = result[:220].rsplit(" ", 1)[0]
 
-    # Küfür etmesin
     for bad in DEFAULT_BAD_WORDS:
         result = re.sub(re.escape(bad), "***", result, flags=re.IGNORECASE)
 
@@ -624,14 +724,14 @@ def call_openai_compatible(base_url: str, api_key: str, model: str, messages: Li
     payload = {
         "model": model,
         "messages": messages,
-        "temperature": 0.65,
-        "max_tokens": 180
+        "temperature": 0.6,
+        "max_tokens": 160
     }
 
     try:
         r = requests.post(base_url, headers=headers, json=payload, timeout=40)
         print(f"[AI] {model} status: {r.status_code}")
-        print(f"[AI] {model} body: {r.text[:350]}")
+        print(f"[AI] {model} body: {r.text[:300]}")
         if r.status_code != 200:
             return None
         data = r.json()
@@ -733,7 +833,7 @@ async def moderate_message(message: discord.Message) -> bool:
 
         try:
             warn_msg = await message.channel.send(
-                f"{message.author.mention} küfürlü mesajlar yasak. Mesajın silindi ve uyarı kaydın işlendi."
+                f"{message.author.mention} küfürlü mesajlar yasak. Mesajın silindi ve uyarı işlendi."
             )
             await asyncio.sleep(6)
             await warn_msg.delete()
@@ -792,12 +892,10 @@ async def on_voice_state_update(member: discord.Member, before: discord.VoiceSta
 
     now = now_utc()
 
-    # Sesliye giriş
     if before.channel is None and after.channel is not None:
         voice_sessions[member.id] = now
         return
 
-    # Kanal değişimi
     if before.channel is not None and after.channel is not None and before.channel.id != after.channel.id:
         start = voice_sessions.get(member.id)
         if start:
@@ -806,7 +904,6 @@ async def on_voice_state_update(member: discord.Member, before: discord.VoiceSta
         voice_sessions[member.id] = now
         return
 
-    # Sesliden çıkış
     if before.channel is not None and after.channel is None:
         start = voice_sessions.pop(member.id, None)
         if start:
@@ -815,7 +912,29 @@ async def on_voice_state_update(member: discord.Member, before: discord.VoiceSta
 
 @bot.event
 async def on_message(message: discord.Message):
-    if message.author.bot or not message.guild:
+    if not message.guild:
+        return
+
+    # Level bot loglarını oku
+    if message.author.bot and message.channel.id == LEVEL_LOG_CHANNEL_ID:
+        parsed = parse_level_update(message)
+        if parsed:
+            member = message.guild.get_member(parsed["user_id"])
+            if member:
+                ensure_profile(member.id, member.display_name)
+                set_levels(
+                    member.id,
+                    member.display_name,
+                    text_level=parsed["text_level"],
+                    voice_level=parsed["voice_level"]
+                )
+                print(
+                    f"[LEVEL LOG] {member.display_name} | "
+                    f"text={parsed['text_level']} voice={parsed['voice_level']}"
+                )
+        return
+
+    if message.author.bot:
         return
 
     content = message.content.strip()
@@ -824,7 +943,6 @@ async def on_message(message: discord.Message):
 
     ensure_profile(message.author.id, message.author.display_name)
 
-    # Küfür moderasyonu
     moderated = await moderate_message(message)
     if moderated:
         return
@@ -845,7 +963,7 @@ async def on_message(message: discord.Message):
         new_facts = learn_from_message(content, facts)
         upsert_facts(message.author.id, message.author.display_name, new_facts)
 
-    # Sadece mention veya bot mesajına reply
+    # Sadece mention veya reply
     mentioned = bot.user in message.mentions if bot.user else False
     replied_to_bot = False
 
@@ -876,7 +994,6 @@ async def on_message(message: discord.Message):
 
     lowered = clean_content.lower()
 
-    # Basit ve doğal kısa cevaplar
     if lowered in SHORT_QA:
         await message.channel.send(SHORT_QA[lowered])
         return
@@ -923,7 +1040,7 @@ async def on_message(message: discord.Message):
 async def saki_command(interaction: discord.Interaction):
     await interaction.response.send_message(
         "Merhaba~ Ben **Saki**. Bu sunucunun tatlı ama işini bilen maskotuyum.\n"
-        "Sohbet ederim, anime öneririm, seviyeleri takip ederim, gerektiğinde uyarı da yazarım.",
+        "Sohbet ederim, anime öneririm, seviyeleri takip ederim ve gerektiğinde uyarı da yazarım.",
         ephemeral=True
     )
 
@@ -1044,7 +1161,37 @@ async def timerole_add_command(
 ):
     delta = parse_duration(duration)
     if not delta:
-        await interaction.response.send_message("Süre formatı geçersiz. Örnek: `30m`, `2h`, `7d`, `1d12h`", ephemeral=True)
+        await interaction.response.send_message(
+            "Süre formatı geçersiz. Örnek: `30m`, `2h`, `7d`, `1d12h`",
+            ephemeral=True
+        )
+        return
+
+    me = interaction.guild.me
+    if me is None:
+        await interaction.response.send_message("Bot sunucu bilgisini okuyamadı.", ephemeral=True)
+        return
+
+    if not interaction.guild.me.guild_permissions.manage_roles:
+        await interaction.response.send_message("Bende **Rolleri Yönet** yetkisi yok.", ephemeral=True)
+        return
+
+    if role >= me.top_role:
+        await interaction.response.send_message(
+            "Bu rolü veremem. Benim rolüm, vermeye çalıştığın rolün üstünde olmalı.",
+            ephemeral=True
+        )
+        return
+
+    if interaction.user != interaction.guild.owner and role >= interaction.user.top_role:
+        await interaction.response.send_message(
+            "Kendi rolünün üstündeki ya da eşit roldeki bir rolü veremezsin.",
+            ephemeral=True
+        )
+        return
+
+    if member == interaction.guild.owner and interaction.user != interaction.guild.owner:
+        await interaction.response.send_message("Sunucu sahibine süreli rol veremezsin.", ephemeral=True)
         return
 
     expires_at = now_utc() + delta
@@ -1057,8 +1204,16 @@ async def timerole_add_command(
             f"Bitiş: **{format_dt(expires_at)}**",
             ephemeral=True
         )
+    except discord.Forbidden:
+        await interaction.response.send_message(
+            "Rol veremedim. Rol sıralamasını ve yetkilerimi kontrol et.",
+            ephemeral=True
+        )
     except Exception as e:
-        await interaction.response.send_message(f"Rol verilirken hata oldu: {e}", ephemeral=True)
+        await interaction.response.send_message(
+            f"Rol verilirken hata oldu: {e}",
+            ephemeral=True
+        )
 
 @bot.tree.command(name="timerole_remove", description="Süreli rol kaydını ve rolü kaldırır.")
 @app_commands.describe(member="Üye", role="Rol")
