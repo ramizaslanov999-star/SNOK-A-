@@ -47,43 +47,36 @@ CHAT_CHANNEL_IDS = parse_id_set(CHAT_CHANNEL_IDS_RAW)
 AUTO_CHAT_CHANNEL_ID_INT = int(AUTO_CHAT_CHANNEL_ID) if AUTO_CHAT_CHANNEL_ID and AUTO_CHAT_CHANNEL_ID.isdigit() else None
 SYNC_GUILD_ID_INT = int(SYNC_GUILD_ID) if SYNC_GUILD_ID and SYNC_GUILD_ID.isdigit() else None
 
-STOPWORDS = {
-    "ve", "ile", "ama", "çok", "bir", "bu", "şu", "ben", "sen", "biz", "siz",
-    "da", "de", "mi", "mu", "mü", "ki", "ya", "hem", "gibi", "için", "olan",
-    "olarak", "daha", "az", "en", "şey", "şeyi", "şeyler", "var", "yok", "ne",
-    "nasıl", "niye", "neden", "kadar", "sonra", "önce", "bana", "sana", "onu",
-    "bunu", "şunu", "lan", "aga", "abi", "tamam", "evet", "hayır"
+GREETINGS = {"selam", "merhaba", "naber", "nasılsın", "nasilsin", "iyi misin", "hello", "hi"}
+SHORT_QA = {
+    "nasılsın": "İyiyim, sen nasılsın?",
+    "nasilsin": "İyiyim, sen nasılsın?",
+    "naber": "Takılıyorum işte, sende durumlar nasıl?",
+    "merhaba": "Merhaba~ Nasılsın?",
+    "selam": "Selam~ Bugün ne konuşuyoruz?"
 }
 
 ANIME_LIST = [
-    ("Frieren", "Sakin başlayıp kalpten vuran bir fantastik yolculuk."),
-    ("Vinland Saga", "Karakter gelişimi ve sert dünya sevene ilaç gibi."),
-    ("86", "Savaş, dram ve sağlam atmosfer karışımı."),
-    ("Jujutsu Kaisen", "Aksiyon ve güçlü dövüşler istiyorsan iyi gider."),
-    ("Kaguya-sama", "Romantik komedi ama zekice kapışmalı."),
-    ("Bocchi the Rock!", "Tatlı, komik ve aşırı sempatik."),
-    ("Cyberpunk: Edgerunners", "Kısa, sert ve akılda kalan bir seri."),
-    ("Oshi no Ko", "Parlak görünen ama karanlık tarafı kuvvetli."),
-    ("Spy x Family", "Sıcak, komik ve rahat izlemelik."),
-    ("Blue Lock", "Ego, rekabet ve gaz futbol kaosu."),
-    ("Solo Leveling", "Güçlenme hissi arıyorsan güzel akar."),
-    ("The Apothecary Diaries", "Zeki ana karakter ve saray gizemi."),
-    ("Attack on Titan", "Gerilim, savaş ve büyük hikâye."),
-    ("Demon Slayer", "Güzel görsellik ve kolay akan aksiyon."),
+    ("Berserk 1997", "Karanlık atmosfer ve ağır hikâye için çok iyi gider."),
+    ("Claymore", "Berserk sevene yakın gelen karanlık bir hava verir."),
+    ("Vinland Saga", "Ağır karakter gelişimi ve sert dünya istiyorsan sağlamdır."),
+    ("Attack on Titan", "Gerilim, savaş ve büyük hikâye isteyenlere iyi gider."),
+    ("Dororo", "Karanlık ama duygulu bir yolculuk istiyorsan güzel seçim."),
+    ("Devilman Crybaby", "Sert, karanlık ve rahatsız edici güçlü bir enerji verir."),
+    ("Goblin Slayer", "Koyu fantezi ve acımasız dünya seviyorsan bakılır."),
+    ("Hellsing Ultimate", "Karanlık aksiyon ve güçlü karizma arıyorsan çok iyi."),
+    ("Parasyte", "Psikolojik gerilim ve vahşet tarafı hoşuna gidebilir."),
+    ("86", "Savaş ve dram tarafı sağlamdır."),
 ]
 
 WAIFU_ARCHETYPES = [
-    "utangaç ama aşırı sadık tip",
-    "alaycı ama içten içe yumuşak tip",
-    "enerjik gamer girl tipi",
-    "sessiz ama tehlikeli cool tip",
-    "tatlı chibi maskot tipi",
-    "zeki ve dominant senpai tipi",
-    "romantik ama biraz kıskanç tip",
-    "şakacı ve tam baş belası tip",
+    "cool ve sessiz tip",
+    "tatlı ama hafif yaramaz tip",
+    "gamer girl tipi",
+    "alaycı ama sevecen tip",
+    "utangaç ama sadık tip",
+    "zeki senpai tipi",
 ]
-
-GREETINGS = {"selam", "merhaba", "naber", "nasılsın", "iyi misin", "hello", "hi"}
 
 # =========================================================
 # DATABASE
@@ -136,13 +129,13 @@ def save_message(guild_id: int, channel_id: int, user_id: int, username: str, co
         str(channel_id),
         str(user_id),
         username,
-        content[:2000],
+        content[:1200],
         datetime.now(timezone.utc).isoformat()
     ))
     conn.commit()
     conn.close()
 
-def get_recent_channel_messages(channel_id: int, limit: int = 12) -> List[sqlite3.Row]:
+def get_recent_channel_messages(channel_id: int, limit: int = 8) -> List[sqlite3.Row]:
     conn = db_connect()
     cur = conn.cursor()
     cur.execute("""
@@ -155,20 +148,6 @@ def get_recent_channel_messages(channel_id: int, limit: int = 12) -> List[sqlite
     rows = cur.fetchall()
     conn.close()
     return list(reversed(rows))
-
-def get_recent_guild_messages(guild_id: int, limit: int = 80) -> List[sqlite3.Row]:
-    conn = db_connect()
-    cur = conn.cursor()
-    cur.execute("""
-        SELECT username, content
-        FROM messages
-        WHERE guild_id = ?
-        ORDER BY id DESC
-        LIMIT ?
-    """, (str(guild_id), limit))
-    rows = cur.fetchall()
-    conn.close()
-    return rows
 
 def get_profile(user_id: int) -> Dict[str, Any]:
     conn = db_connect()
@@ -221,7 +200,7 @@ def clear_user_profile(user_id: int):
 # =========================================================
 # LEARNING
 # =========================================================
-def add_unique(items: List[str], value: str, limit: int = 12):
+def add_unique(items: List[str], value: str, limit: int = 8):
     value = value.strip().lower()
     if not value:
         return
@@ -232,7 +211,7 @@ def add_unique(items: List[str], value: str, limit: int = 12):
 
 def clean_fact_text(text: str) -> str:
     text = re.sub(r"[^\w\sçğıöşüÇĞİÖŞÜ-]", "", text).strip()
-    return text[:60]
+    return text[:50]
 
 def learn_from_message(content: str, old_profile: Dict[str, Any]) -> Dict[str, Any]:
     profile = {
@@ -250,8 +229,6 @@ def learn_from_message(content: str, old_profile: Dict[str, Any]) -> Dict[str, A
         (r"\bfavori anime(?:m)?\s+(.+)", "favorite_anime"),
         (r"\ben sevdiğim oyun\s+(.+)", "favorite_games"),
         (r"\bfavori oyun(?:um)?\s+(.+)", "favorite_games"),
-        (r"\boynuyorum\s+(.+)", "favorite_games"),
-        (r"\bizliyorum\s+(.+)", "favorite_anime"),
     ]
 
     for pattern, bucket in patterns:
@@ -261,105 +238,79 @@ def learn_from_message(content: str, old_profile: Dict[str, Any]) -> Dict[str, A
             if fact:
                 add_unique(profile[bucket], fact)
 
-    if any(word in text.lower() for word in ["anime", "manga", "oyun", "discord", "sunucu"]):
-        short_note = clean_fact_text(text)
-        if short_note and len(short_note) > 6:
-            add_unique(profile["notes"], short_note, limit=8)
-
     return profile
 
 def profile_to_text(profile: Dict[str, Any]) -> str:
     parts = []
     if profile.get("likes"):
-        parts.append("Sevdiği şeyler: " + ", ".join(profile["likes"][:6]))
+        parts.append("Sevdiği şeyler: " + ", ".join(profile["likes"][:5]))
     if profile.get("favorite_anime"):
         parts.append("Anime tercihleri: " + ", ".join(profile["favorite_anime"][:4]))
     if profile.get("favorite_games"):
         parts.append("Oyun tercihleri: " + ", ".join(profile["favorite_games"][:4]))
-    if profile.get("notes"):
-        parts.append("Notlar: " + " | ".join(profile["notes"][:4]))
-    return "\n".join(parts) if parts else "Henüz kayıtlı bir şey yok."
+    return "\n".join(parts) if parts else "Henüz kayıtlı bilgi yok."
 
-def get_server_vibe(guild_id: int) -> str:
-    rows = get_recent_guild_messages(guild_id, limit=100)
-    if not rows:
-        return "Samimi, anime ve sohbet odaklı bir ortam."
-
-    word_counts: Dict[str, int] = {}
-    for row in rows:
-        content = row["content"].lower()
-        words = re.findall(r"[a-zA-ZçğıöşüÇĞİÖŞÜ0-9-]{3,}", content)
-        for w in words:
-            if w in STOPWORDS:
-                continue
-            word_counts[w] = word_counts.get(w, 0) + 1
-
-    top_words = [w for w, _ in sorted(word_counts.items(), key=lambda x: x[1], reverse=True)[:10]]
-    if not top_words:
-        return "Samimi, anime ve sohbet odaklı bir ortam."
-
-    return "Sunucuda öne çıkan hava/kelimeler: " + ", ".join(top_words)
-
-def recent_context_to_text(channel_id: int, limit: int = 10) -> str:
+def recent_context_to_text(channel_id: int, limit: int = 6) -> str:
     rows = get_recent_channel_messages(channel_id, limit=limit)
     if not rows:
         return "Henüz kayıt yok."
     lines = []
     for row in rows:
         lines.append(f'{row["username"]}: {row["content"]}')
-    return "\n".join(lines[-10:])
+    return "\n".join(lines)
 
 # =========================================================
 # RESPONSE CLEANUP
 # =========================================================
-def cleanup_ai_response(text: str) -> str:
+def cleanup_ai_response(text: str, username: str) -> str:
     if not text:
         return "Saki şu an biraz uykulu... birazdan tekrar yaz~"
 
     text = text.replace("Hikari", "Saki")
+    text = text.replace("Sankaso No Kizuna", username)
+    text = text.replace("Seni 147", "Seni")
+    text = text.replace("ID", "")
     text = text.replace("Ben Hikari", "Ben Saki")
-    text = text.replace("I'm Hikari", "Ben Saki")
-    text = text.replace("I am Hikari", "Ben Saki")
 
     lines = [line.strip() for line in text.splitlines() if line.strip()]
-
-    cleaned_lines = []
+    cleaned = []
     seen = set()
+
+    banned_parts = [
+        "türkçede ne konuşuyoruz",
+        "sankaso no kizuna olarak tanıyorum",
+        "ben hikari",
+        "i am hikari",
+        "i'm hikari"
+    ]
+
     for line in lines:
-        key = line.lower()
-        if key in seen:
+        low = line.lower()
+
+        if any(bad in low for bad in banned_parts):
+            continue
+
+        low = re.sub(r"\d{6,}", "", low).strip()
+        key = low
+        if key in seen or not key:
             continue
         seen.add(key)
+        cleaned.append(line)
 
-        # saçma tekrarları eleyelim
-        if "türkçede ne konuşuyoruz" in key:
-            continue
-        if "ben hikari" in key:
-            line = line.replace("Hikari", "Saki")
+    if not cleaned:
+        cleaned = [text.strip()]
 
-        cleaned_lines.append(line)
+    result = " ".join(cleaned[:2]).strip()
+    result = re.sub(r"\s+", " ", result).strip()
+    result = re.sub(r"([!?.,])\1+", r"\1", result)
 
-    if not cleaned_lines:
-        text = text.strip()
-    else:
-        text = "\n".join(cleaned_lines[:4])
+    if len(result) > 300:
+        result = result[:300].rsplit(" ", 1)[0]
 
-    # aşırı uzun olmasın
-    text = text[:1800].strip()
+    if not result:
+        result = "Saki burada, tekrar yaz bakalım~"
 
-    # gereksiz çoklu selamı azalt
-    text = re.sub(r"(Merhaba[!., ]*){2,}", "Merhaba! ", text, flags=re.IGNORECASE)
-    text = re.sub(r"(Selam[!., ]*){2,}", "Selam! ", text, flags=re.IGNORECASE)
-
-    # saçma boşluklar
-    text = re.sub(r"\n{3,}", "\n\n", text)
-    text = re.sub(r"[ ]{2,}", " ", text).strip()
-
-    # tamamen alakasızsa kısa fallback
-    if len(text) < 2:
-        return "Saki burada, tekrar yaz bakalım~"
-
-    return text
+    return result
 
 # =========================================================
 # AI
@@ -372,14 +323,14 @@ def call_openai_compatible(base_url: str, api_key: str, model: str, messages: Li
     payload = {
         "model": model,
         "messages": messages,
-        "temperature": 0.85,
-        "max_tokens": 260
+        "temperature": 0.7,
+        "max_tokens": 180
     }
 
     try:
-        r = requests.post(base_url, headers=headers, json=payload, timeout=45)
+        r = requests.post(base_url, headers=headers, json=payload, timeout=40)
         print(f"[AI] {model} status:", r.status_code)
-        print(f"[AI] {model} body:", r.text[:500])
+        print(f"[AI] {model} body:", r.text[:350])
 
         if r.status_code != 200:
             return None
@@ -390,12 +341,11 @@ def call_openai_compatible(base_url: str, api_key: str, model: str, messages: Li
         print(f"[AI] {model} error:", e)
         return None
 
-def ask_ai(messages: List[Dict[str, str]]) -> str:
+def ask_ai(messages: List[Dict[str, str]], username: str) -> str:
     providers = []
 
     if GROQ_API_KEY:
         providers.append((
-            "groq",
             "https://api.groq.com/openai/v1/chat/completions",
             "llama-3.1-8b-instant",
             GROQ_API_KEY
@@ -403,7 +353,6 @@ def ask_ai(messages: List[Dict[str, str]]) -> str:
 
     if DEEPSEEK_API_KEY:
         providers.append((
-            "deepseek",
             "https://api.deepseek.com/chat/completions",
             "deepseek-chat",
             DEEPSEEK_API_KEY
@@ -411,46 +360,39 @@ def ask_ai(messages: List[Dict[str, str]]) -> str:
 
     if OPENAI_API_KEY:
         providers.append((
-            "openai",
             "https://api.openai.com/v1/chat/completions",
             "gpt-4o-mini",
             OPENAI_API_KEY
         ))
 
-    for provider_name, url, model, key in providers:
-        print(f"[AI] Trying provider: {provider_name}")
+    for url, model, key in providers:
         reply = call_openai_compatible(url, key, model, messages)
         if reply:
-            print(f"[AI] Success provider: {provider_name}")
-            return cleanup_ai_response(reply)
+            return cleanup_ai_response(reply, username)
 
     return "Saki şu an biraz uykulu... birazdan tekrar yaz~"
 
 def build_system_prompt(
     guild_name: str,
     user_display_name: str,
-    profile_text: str,
-    server_vibe: str
+    profile_text: str
 ) -> str:
     return f"""
 Senin adın Saki.
-Sen {guild_name} sunucusunun resmi anime/chibi maskotusun.
+Sen {guild_name} sunucusunun anime/chibi maskotusun.
 Her zaman Türkçe konuşursun.
-Kısa, akıcı, doğal ve samimi yazarsın.
-Tatlı, hafif yaramaz ve eğlenceli bir tarzın var ama saçmalamazsın.
-Aynı mesajda birden fazla kez selam vermezsin.
-Robot gibi, çeviri gibi veya bozuk konuşmazsın.
-Kullanıcının sorduğu şeye direkt cevap verirsin.
-Anlamadığında tek kısa soru sorarsın.
-Asla "Ben Hikari" demezsin. Karakter adın sadece Saki.
-Gereksiz uzun yazmazsın.
+Kısa, doğal ve net cevap verirsin.
 Tek mesajda tek cevap verirsin.
-En fazla 4 kısa cümle yazarsın.
+Aynı cümleyi tekrar etmezsin.
+Kullanıcıya asla sayı, ID, etiket, sunucu adı veya garip kimlikler yakıştırmazsın.
+Kullanıcının adını biliyorsan sadece adıyla hitap edersin: {user_display_name}
+Gereksiz şiirsel veya robot gibi konuşmazsın.
+Maksimum 2-3 kısa cümle yazarsın.
 Anime, manga, oyun ve sunucu sohbetlerini seversin.
+Sorulan şeye direkt cevap verirsin.
+Asla "Ben Hikari" demezsin.
+Asla "Sankaso No Kizuna olarak tanıyorum" gibi saçma cümle kurmazsın.
 
-Sunucu adı: {guild_name}
-Sunucu havası: {server_vibe}
-Kullanıcı adı: {user_display_name}
 Kullanıcı hakkında bildiklerin:
 {profile_text}
 """.strip()
@@ -460,16 +402,15 @@ def build_chat_messages(
     user_display_name: str,
     user_input: str,
     profile_text: str,
-    recent_context_text: str,
-    server_vibe: str
+    recent_context_text: str
 ) -> List[Dict[str, str]]:
-    system = build_system_prompt(guild_name, user_display_name, profile_text, server_vibe)
+    system = build_system_prompt(guild_name, user_display_name, profile_text)
 
     user_content = f"""
-Son kanal konuşmaları:
+Son konuşmalar:
 {recent_context_text}
 
-Kullanıcının yeni mesajı:
+Yeni kullanıcı mesajı:
 {user_input}
 """.strip()
 
@@ -479,7 +420,7 @@ Kullanıcının yeni mesajı:
     ]
 
 # =========================================================
-# RENDER / WEB
+# WEB
 # =========================================================
 app = Flask(__name__)
 
@@ -503,14 +444,18 @@ class SakiBot(commands.Bot):
     async def setup_hook(self):
         init_db()
 
-        if SYNC_GUILD_ID_INT:
-            guild = discord.Object(id=SYNC_GUILD_ID_INT)
-            self.tree.copy_global_to(guild=guild)
-            await self.tree.sync(guild=guild)
-            print(f"[Slash] Guild sync tamam: {SYNC_GUILD_ID_INT}")
-        else:
-            await self.tree.sync()
-            print("[Slash] Global sync tamam")
+        try:
+            if SYNC_GUILD_ID_INT:
+                guild = discord.Object(id=SYNC_GUILD_ID_INT)
+                self.tree.clear_commands(guild=guild)
+                self.tree.copy_global_to(guild=guild)
+                await self.tree.sync(guild=guild)
+                print(f"[Slash] Guild sync tamam: {SYNC_GUILD_ID_INT}")
+            else:
+                await self.tree.sync()
+                print("[Slash] Global sync tamam")
+        except Exception as e:
+            print("[Slash] Sync error:", e)
 
         if not auto_chat_loop.is_running() and AUTO_CHAT_CHANNEL_ID_INT:
             auto_chat_loop.start()
@@ -531,46 +476,21 @@ async def auto_chat_loop():
     if not AUTO_CHAT_CHANNEL_ID_INT:
         return
 
-    current_hour = datetime.now().hour
-    if AUTO_CHAT_HOURS > 1 and current_hour % AUTO_CHAT_HOURS != 0:
+    now_hour = datetime.now().hour
+    if AUTO_CHAT_HOURS > 1 and now_hour % AUTO_CHAT_HOURS != 0:
         return
 
     channel = bot.get_channel(AUTO_CHAT_CHANNEL_ID_INT)
     if not channel or not isinstance(channel, discord.TextChannel):
         return
 
-    try:
-        guild_name = channel.guild.name
-        vibe = get_server_vibe(channel.guild.id)
-        ctx = recent_context_to_text(channel.id, limit=8)
-
-        messages = [
-            {
-                "role": "system",
-                "content": f"""
-Sen Saki'sin, {guild_name} sunucusunun anime maskotusun.
-Kanalda doğal bir sohbet başlatacak tek bir kısa mesaj yaz.
-Mesaj sıcak, eğlenceli ve doğal olsun.
-Aşırı uzun yazma.
-Tek mesaj üret.
-Türkçe yaz.
-Sunucu havası: {vibe}
-Son konuşmalar:
-{ctx}
-""".strip()
-            },
-            {
-                "role": "user",
-                "content": "Kanala doğal bir sohbet açılış mesajı yaz."
-            }
-        ]
-
-        text = await asyncio.to_thread(ask_ai, messages)
-        text = cleanup_ai_response(text)
-        if text:
-            await channel.send(text[:1800])
-    except Exception as e:
-        print("[AutoChat] error:", e)
+    prompts = [
+        "Bugün izlediğiniz en iyi anime neydi?",
+        "Şu an herkes en çok hangi oyuna sarıyor?",
+        "Karanlık anime mi daha iyi, komedi mi?",
+        "Şu an tek bir anime önerecek olsanız ne derdiniz?",
+    ]
+    await channel.send(random.choice(prompts))
 
 # =========================================================
 # EVENTS
@@ -581,17 +501,15 @@ async def on_ready():
 
 @bot.event
 async def on_message(message: discord.Message):
-    if message.author.bot:
-        return
-
-    if not message.guild:
+    if message.author.bot or not message.guild:
         return
 
     content = message.content.strip()
     if not content:
         return
 
-    # hafıza için komut olmayan normal mesajları kaydet
+    await bot.process_commands(message)
+
     if not content.startswith("/"):
         save_message(
             guild_id=message.guild.id,
@@ -608,9 +526,6 @@ async def on_message(message: discord.Message):
     mentioned = bot.user in message.mentions if bot.user else False
     is_chat_channel = message.channel.id in CHAT_CHANNEL_IDS if CHAT_CHANNEL_IDS else False
 
-    # prefix komutları çalışsın diye
-    await bot.process_commands(message)
-
     if not mentioned and not is_chat_channel:
         return
 
@@ -626,123 +541,110 @@ async def on_message(message: discord.Message):
     if not clean_content:
         clean_content = "selam"
 
-    guild_name = message.guild.name
-    user_profile = get_profile(message.author.id)
-    profile_text = profile_to_text(user_profile)
-    server_vibe = get_server_vibe(message.guild.id)
-    recent_text = recent_context_to_text(message.channel.id, limit=10)
+    lower = clean_content.lower()
 
-    # basit selamlar için daha doğal kısa cevap
-    if clean_content.lower() in GREETINGS:
-        greeting_pool = [
-            f"Selam {message.author.display_name}~ Ben Saki, nasılsın?",
-            f"Merhaba {message.author.display_name}, keyifler nasıl?",
-            f"Selammm, Saki burada. Bugün ne konuşuyoruz?",
-            f"Merhaba~ İyi misin {message.author.display_name}?"
-        ]
-        await message.channel.send(random.choice(greeting_pool))
+    if lower in SHORT_QA:
+        await message.channel.send(SHORT_QA[lower])
         return
+
+    if "kaç yaş" in lower or "kac yas" in lower:
+        await message.channel.send("Gerçek bir yaşım yok, ben sunucunun maskotu Saki'yim~")
+        return
+
+    if "anime öner" in lower or "anime oner" in lower:
+        profile = get_profile(message.author.id)
+        likes = " ".join(profile.get("likes", []) + profile.get("favorite_anime", []))
+        picks = []
+
+        if "berserk" in likes or "berserk" in lower:
+            picks = [
+                ("Claymore", "Berserk sevene en yakın hislerden birini verir."),
+                ("Vinland Saga", "Ağır hikâye ve güçlü karakter gelişimi var."),
+                ("Hellsing Ultimate", "Karanlık ve karizmatik aksiyon arıyorsan iyi gider."),
+            ]
+        else:
+            picks = random.sample(ANIME_LIST, 3)
+
+        text = "\n".join([f"• **{name}** — {desc}" for name, desc in picks])
+        await message.channel.send(f"Sana şunları öneririm:\n{text}")
+        return
+
+    guild_name = message.guild.name
+    profile = get_profile(message.author.id)
+    profile_text = profile_to_text(profile)
+    recent_text = recent_context_to_text(message.channel.id, limit=6)
 
     ai_messages = build_chat_messages(
         guild_name=guild_name,
         user_display_name=message.author.display_name,
         user_input=clean_content,
         profile_text=profile_text,
-        recent_context_text=recent_text,
-        server_vibe=server_vibe
+        recent_context_text=recent_text
     )
 
     async with message.channel.typing():
-        reply = await asyncio.to_thread(ask_ai, ai_messages)
+        reply = await asyncio.to_thread(ask_ai, ai_messages, message.author.display_name)
 
-    reply = cleanup_ai_response(reply)
-
-    if len(reply) > 1900:
-        reply = reply[:1900]
-
-    await message.channel.send(reply)
+    await message.channel.send(reply[:1900])
 
 # =========================================================
 # SLASH COMMANDS
 # =========================================================
 @bot.tree.command(name="anime", description="Saki'den anime önerisi al.")
-@app_commands.describe(istek="Tür, vibe veya ne aradığını yaz. Örn: karanlık savaş animesi")
+@app_commands.describe(istek="Örn: karanlık savaş animesi")
 async def anime_command(interaction: discord.Interaction, istek: Optional[str] = None):
+    if interaction.guild and SYNC_GUILD_ID_INT and interaction.guild.id != SYNC_GUILD_ID_INT:
+        await interaction.response.send_message("Bu komut şu an sadece ayarlı test sunucusunda aktif.", ephemeral=True)
+        return
+
     await interaction.response.defer(thinking=True)
 
     if not istek:
-        picks = random.sample(ANIME_LIST, k=min(5, len(ANIME_LIST)))
+        picks = random.sample(ANIME_LIST, 5)
         text = "\n".join([f"• **{name}** — {desc}" for name, desc in picks])
-        await interaction.followup.send(f"Saki'den hızlı anime paketi geliyor:\n\n{text}")
+        await interaction.followup.send(f"Saki'den anime paketi:\n\n{text}")
         return
 
-    user_profile = get_profile(interaction.user.id)
-    profile_text = profile_to_text(user_profile)
-    guild_name = interaction.guild.name if interaction.guild else "SNOK"
-    server_vibe = get_server_vibe(interaction.guild.id) if interaction.guild else "anime, oyun, sohbet"
+    istek_low = istek.lower()
+    if "karanlık" in istek_low or "savaş" in istek_low or "berserk" in istek_low:
+        picks = [
+            ("Claymore", "Karanlık fantezi havası güzel tutuyor."),
+            ("Vinland Saga", "Savaş ve ağır hikâye tarafı güçlü."),
+            ("Hellsing Ultimate", "Sert ve karizmatik aksiyon veriyor."),
+            ("Dororo", "Karanlık yolculuk ve duygusal taraf dengeli."),
+            ("Attack on Titan", "Büyük tehdit ve savaş hissi güçlü."),
+        ]
+    else:
+        picks = random.sample(ANIME_LIST, 5)
 
-    messages = [
-        {
-            "role": "system",
-            "content": build_system_prompt(guild_name, interaction.user.display_name, profile_text, server_vibe)
-        },
-        {
-            "role": "user",
-            "content": f"""
-Kullanıcı şu tarz anime istiyor: {istek}
+    text = "\n".join([f"• **{name}** — {desc}" for name, desc in picks])
+    await interaction.followup.send(text)
 
-Tam 5 tane anime öner.
-Her öneriye 1 kısa neden yaz.
-Madde madde yaz.
-Türkçe yaz.
-Aşırı uzun olma.
-""".strip()
-        }
-    ]
-
-    text = await asyncio.to_thread(ask_ai, messages)
-    text = cleanup_ai_response(text)
-    await interaction.followup.send(text[:1900])
-
-@bot.tree.command(name="waifu", description="Saki'den eğlencelik waifu/archetype yorumu al.")
-@app_commands.describe(mod="İstediğin vibe. Örn: cool, tatlı, gamer, dominant")
+@bot.tree.command(name="waifu", description="Saki'den eğlencelik waifu yorumu al.")
+@app_commands.describe(mod="Örn: cool, tatlı, gamer")
 async def waifu_command(interaction: discord.Interaction, mod: Optional[str] = None):
-    await interaction.response.defer(thinking=True)
+    if interaction.guild and SYNC_GUILD_ID_INT and interaction.guild.id != SYNC_GUILD_ID_INT:
+        await interaction.response.send_message("Bu komut şu an sadece ayarlı test sunucusunda aktif.", ephemeral=True)
+        return
 
     if not mod:
-        choice = random.choice(WAIFU_ARCHETYPES)
-        await interaction.followup.send(f"Saki'nin bugünkü seçimi: **{choice}**")
+        await interaction.response.send_message(f"Saki'nin bugünkü seçimi: **{random.choice(WAIFU_ARCHETYPES)}**")
         return
 
-    guild_name = interaction.guild.name if interaction.guild else "SNOK"
-    user_profile = get_profile(interaction.user.id)
-    profile_text = profile_to_text(user_profile)
-    server_vibe = get_server_vibe(interaction.guild.id) if interaction.guild else "samimi ve eğlenceli"
+    mod_low = mod.lower()
+    if "cool" in mod_low:
+        result = "Bence sana **cool ve sessiz tip** gider. Ağır bir karizması olur."
+    elif "tatlı" in mod_low:
+        result = "Sana **tatlı ama hafif yaramaz tip** daha çok uyar."
+    elif "gamer" in mod_low:
+        result = "Net şekilde **gamer girl tipi** derim."
+    else:
+        result = f"Bence sana **{random.choice(WAIFU_ARCHETYPES)}** gider."
 
-    messages = [
-        {
-            "role": "system",
-            "content": build_system_prompt(guild_name, interaction.user.display_name, profile_text, server_vibe)
-        },
-        {
-            "role": "user",
-            "content": f"""
-Kullanıcı şu vibe'a göre waifu/archetype önerisi istiyor: {mod}
-
-Kısa ve eğlenceli cevap ver.
-1 ana öneri ver.
-İstersen minicik bir yorum ekle.
-Türkçe yaz.
-""".strip()
-        }
-    ]
-
-    text = await asyncio.to_thread(ask_ai, messages)
-    text = cleanup_ai_response(text)
-    await interaction.followup.send(text[:1900])
+    await interaction.response.send_message(result)
 
 @bot.tree.command(name="saki", description="Saki ayarları ve hafıza işlemleri.")
-@app_commands.describe(seçenek="Yapmak istediğin işlem")
+@app_commands.describe(seçenek="bilgi / profilim / profilimi_sıfırla / kanal_hafızasını_sıfırla")
 @app_commands.choices(seçenek=[
     app_commands.Choice(name="bilgi", value="info"),
     app_commands.Choice(name="profilim", value="profile"),
@@ -750,6 +652,10 @@ Türkçe yaz.
     app_commands.Choice(name="kanal_hafızasını_sıfırla", value="reset_channel"),
 ])
 async def saki_command(interaction: discord.Interaction, seçenek: app_commands.Choice[str]):
+    if interaction.guild and SYNC_GUILD_ID_INT and interaction.guild.id != SYNC_GUILD_ID_INT:
+        await interaction.response.send_message("Bu komut şu an sadece ayarlı test sunucusunda aktif.", ephemeral=True)
+        return
+
     choice = seçenek.value
 
     if choice == "info":
@@ -758,7 +664,6 @@ async def saki_command(interaction: discord.Interaction, seçenek: app_commands.
             f"• Chat kanalları: {', '.join(str(x) for x in CHAT_CHANNEL_IDS) if CHAT_CHANNEL_IDS else 'Ayarlanmadı'}\n"
             f"• Auto chat kanalı: {AUTO_CHAT_CHANNEL_ID_INT if AUTO_CHAT_CHANNEL_ID_INT else 'Ayarlanmadı'}\n"
             f"• Sahip adı: {OWNER_NAME}\n"
-            "• Öğrenme tipi: mesaj hafızası + kullanıcı tercih notları\n"
             "• Provider sırası: Groq → DeepSeek → OpenAI"
         )
         await interaction.response.send_message(txt, ephemeral=True)
@@ -772,7 +677,7 @@ async def saki_command(interaction: discord.Interaction, seçenek: app_commands.
 
     if choice == "reset_me":
         clear_user_profile(interaction.user.id)
-        await interaction.response.send_message("Tamam, senden tuttuğum profil notlarını sildim.", ephemeral=True)
+        await interaction.response.send_message("Senden tuttuğum profil notlarını sildim.", ephemeral=True)
         return
 
     if choice == "reset_channel":
@@ -782,19 +687,18 @@ async def saki_command(interaction: discord.Interaction, seçenek: app_commands.
 
         if interaction.channel:
             clear_channel_memory(interaction.channel.id)
-            await interaction.response.send_message("Bu kanalın sohbet hafızasını sildim.", ephemeral=True)
+            await interaction.response.send_message("Bu kanalın hafızasını sildim.", ephemeral=True)
         else:
             await interaction.response.send_message("Kanal bulunamadı.", ephemeral=True)
-        return
 
 # =========================================================
 # MAIN
 # =========================================================
 if __name__ == "__main__":
     if not DISCORD_TOKEN:
-        raise ValueError("DISCORD_TOKEN yok. Render Environment kısmını kontrol et.")
+        raise ValueError("DISCORD_TOKEN yok.")
     if not GROQ_API_KEY and not DEEPSEEK_API_KEY and not OPENAI_API_KEY:
-        raise ValueError("En az 1 AI key lazım: GROQ_API_KEY / DEEPSEEK_API_KEY / OPENAI_API_KEY")
+        raise ValueError("En az 1 AI key lazım.")
 
     keep_alive()
     bot.run(DISCORD_TOKEN)
