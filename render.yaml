@@ -1,1 +1,6 @@
-
+services:
+  - type: web
+    name: hikari-ai-bot
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python bot.py
